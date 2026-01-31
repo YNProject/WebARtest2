@@ -6,7 +6,7 @@
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   </head>
   <body style="margin: 0; overflow: hidden;">
-    <a-scene embedded vr-mode-ui="enabled: false" arjs="sourceType: webcam; debugUIEnabled: false;">
+    <a-scene id="scene" embedded vr-mode-ui="enabled: false" arjs="sourceType: webcam; debugUIEnabled: false;">
       
       <a-assets>
         <a-mixin id="petal" 
@@ -15,37 +15,38 @@
         </a-mixin>
       </a-assets>
 
-      <a-entity camera id="camera"></a-entity>
+      <a-entity camera></a-entity>
 
     </a-scene>
 
     <script>
-      const cameraEl = document.querySelector('#camera');
+      const sceneEl = document.querySelector('#scene'); // 追加先をsceneに変更
       
-      // 花びらを生成する関数
       function createPetal(isExtra = false) {
         const petal = document.createElement('a-entity');
         petal.setAttribute('mixin', 'petal');
         
-        // 広範囲な奥行き（左右±10m、奥行き1m〜20m）
-        const x = (Math.random() - 0.5) * 20;
-        const z = -Math.random() * 20 - 1;
-        const startY = 5 + Math.random() * 5; // 高いところから降る
-        const endY = -1.6; // 床の高さ（大人の目線から約1.6m下）
+        // 360度広がるように、XとZの両方をランダムな円状にします
+        // 半径15mの範囲にばらまく
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.random() * 15;
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        
+        const startY = 5 + Math.random() * 5;
+        const endY = -1.6;
 
         petal.setAttribute('position', `${x} ${startY} ${z}`);
 
-        // 落下アニメーション（一度きりに設定して床で止める）
         const fallDuration = isExtra ? 2000 : (10000 + Math.random() * 10000); 
         petal.setAttribute('animation__fall', {
           property: 'position',
-          to: `${x + (Math.random() - 0.5) * 2} ${endY} ${z}`,
+          to: `${x + (Math.random() - 0.5) * 2} ${endY} ${z + (Math.random() - 0.5) * 2}`,
           dur: fallDuration,
-          easing: 'easeInQuad', // 落ち始めはゆっくり、最後は重力感
-          loop: false // 床で止まるように false に
+          easing: 'easeInQuad',
+          loop: false
         });
 
-        // 回転は継続させる（風で揺れている感じ）
         petal.setAttribute('animation__rotate', {
           property: 'rotation',
           to: `${Math.random() * 360} ${Math.random() * 360} ${Math.random() * 360}`,
@@ -53,42 +54,33 @@
           loop: true
         });
 
-        cameraEl.appendChild(petal);
+        sceneEl.appendChild(petal); // cameraではなくsceneに追加！
 
-        // 床に落ちてしばらくしたら消す（メモリ節約のため）
         setTimeout(() => {
           if (petal.parentNode) petal.parentNode.removeChild(petal);
         }, fallDuration + 5000);
       }
 
-      // 初期状態で300枚降らせる
-      for (let i = 0; i < 300; i++) {
-        setTimeout(() => createPetal(), Math.random() * 5000);
+      // 最初は自分の周り360度に500枚降らせる
+      for (let i = 0; i < 500; i++) {
+        setTimeout(() => createPetal(), Math.random() * 10000);
       }
 
-      // --- スマホを振った時の検知 ---
+      // スマホを振る検知（前回のコードと同じ）
       let lastUpdate = 0;
       let lastX, lastY, lastZ;
-      const threshold = 15; // 振る強さのしきい値（調整可）
-
+      const threshold = 15;
       window.addEventListener('devicemotion', (event) => {
         const acceleration = event.accelerationIncludingGravity;
         const curTime = new Date().getTime();
-
         if ((curTime - lastUpdate) > 100) {
           const diffTime = curTime - lastUpdate;
           lastUpdate = curTime;
-
           const speed = Math.abs(acceleration.x + acceleration.y + acceleration.z - lastX - lastY - lastZ) / diffTime * 10000;
-
           if (speed > threshold) {
-            // 振ったら10枚追加
-            for(let i=0; i<10; i++) createPetal(true);
+            for(let i=0; i<20; i++) createPetal(true);
           }
-
-          lastX = acceleration.x;
-          lastY = acceleration.y;
-          lastZ = acceleration.z;
+          lastX = acceleration.x; lastY = acceleration.y; lastZ = acceleration.z;
         }
       });
     </script>
