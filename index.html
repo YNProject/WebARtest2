@@ -43,75 +43,97 @@
 
     <script>
       const sceneEl = document.querySelector('#scene');
-      const startBtn = document.querySelector('#start-btn');
-      const overlay = document.querySelector('#overlay');
+const startBtn = document.querySelector('#start-btn');
+const overlay = document.querySelector('#overlay');
 
-      const MAX_PETALS = 600; 
+const MAX_PETALS = 600; // 600枚の豪華版
+let petals = []; // 生成した花びらを管理する配列
 
-      startBtn.addEventListener('click', function() {
-        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-          DeviceOrientationEvent.requestPermission()
-            .then(permissionState => {
-              if (permissionState === 'granted') {
-                initAR();
-              } else {
-                alert('スマホの傾きセンサーを許可してください');
-              }
-            })
-            .catch(console.error);
-        } else {
+startBtn.addEventListener('click', function() {
+  if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission()
+      .then(permissionState => {
+        if (permissionState === 'granted') {
           initAR();
+        } else {
+          alert('スマホの傾きセンサーを許可してください');
         }
-      });
+      })
+      .catch(console.error);
+  } else {
+    initAR();
+  }
+});
 
-      function initAR() {
-        overlay.style.display = 'none';
-        for (let i = 0; i < MAX_PETALS; i++) {
-          setTimeout(() => createPetal(), Math.random() * 10000);
-        }
-      }
+function initAR() {
+  overlay.style.display = 'none';
+  for (let i = 0; i < MAX_PETALS; i++) {
+    setTimeout(() => createPetal(), Math.random() * 15000);
+  }
 
-      function createPetal() {
-        const petal = document.createElement('a-entity');
-        petal.setAttribute('mixin', 'petal');
-        
-        const angle = Math.random() * Math.PI * 2;
-        const radius = 2 + Math.random() * 16;
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
-        
-        const startY = 8 + Math.random() * 5; 
-        const endY = -10; 
+  // ★ 15秒に一度、風を吹かせるタイマー
+  setInterval(blowWind, 15000);
+}
 
-        petal.setAttribute('position', `${x} ${startY} ${z}`);
-        
-        const fallDuration = 12000 + Math.random() * 10000;
+function createPetal() {
+  const petal = document.createElement('a-entity');
+  petal.setAttribute('mixin', 'petal');
+  
+  const angle = Math.random() * Math.PI * 2;
+  const radius = 2 + Math.random() * 16;
+  const x = Math.cos(angle) * radius;
+  const z = Math.sin(angle) * radius;
+  
+  const startY = 8 + Math.random() * 5; 
+  const endY = -10; 
 
-        petal.setAttribute('animation__fall', {
-          property: 'position',
-          to: `${x + (Math.random() - 0.5) * 6} ${endY} ${z + (Math.random() - 0.5) * 6}`,
-          dur: fallDuration,
-          easing: 'linear',
-          loop: false
-        });
+  petal.setAttribute('position', `${x} ${startY} ${z}`);
+  
+  const fallDuration = 12000 + Math.random() * 10000;
 
-        // 回転を少し不規則にしてひらひら感をアップ
-        petal.setAttribute('animation__rotate', {
-          property: 'rotation',
-          to: `${Math.random() * 360} ${Math.random() * 720} ${Math.random() * 360}`,
-          dur: 4000 + Math.random() * 3000,
-          loop: true
-        });
+  // アニメーションにIDを振って、後で風の影響を与えられるようにします
+  petal.setAttribute('animation__fall', {
+    property: 'position',
+    to: `${x + (Math.random() - 0.5) * 4} ${endY} ${z + (Math.random() - 0.5) * 4}`,
+    dur: fallDuration,
+    easing: 'linear',
+    loop: false
+  });
 
-        sceneEl.appendChild(petal);
+  petal.setAttribute('animation__rotate', {
+    property: 'rotation',
+    to: `${Math.random() * 360} ${Math.random() * 720} ${Math.random() * 360}`,
+    dur: 4000 + Math.random() * 3000,
+    loop: true
+  });
 
-        setTimeout(() => {
-          if (petal.parentNode) {
-            petal.parentNode.removeChild(petal);
-            createPetal();
-          }
-        }, fallDuration);
-      }
+  sceneEl.appendChild(petal);
+  petals.push(petal); // 管理配列に追加
+
+  setTimeout(() => {
+    if (petal.parentNode) {
+      petal.parentNode.removeChild(petal);
+      petals = petals.filter(p => p !== petal); // 配列から削除
+      createPetal();
+    }
+  }, fallDuration);
+}
+
+// ★ 風を吹かせる関数
+function blowWind() {
+  // ランダムな風の方向（左右 ±10m、前後 ±10m の影響）
+  const windX = (Math.random() - 0.5) * 20;
+  const windZ = (Math.random() - 0.5) * 20;
+
+  petals.forEach(petal => {
+    const currentPos = petal.getAttribute('position');
+    // 現在の落下アニメーションを上書きして、風の方向へ流す
+    petal.setAttribute('animation__fall', {
+      to: `${currentPos.x + windX} -10 ${currentPos.z + windZ}`,
+      dur: 8000 // 風に乗って加速する感じ
+    });
+  });
+}
     </script>
   </body>
 </html>
