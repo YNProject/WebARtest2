@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Sakura AR Test (Overhead)</title>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <style>
+        body { margin: 0; }
+        model-viewer { width: 100%; height: 100vh; }
+        .instruction {
+            position: absolute; top: 10px; left: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px; border-radius: 8px; font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="instruction">
+        1. 床をゆっくり写してスキャン<br>
+        2. 床に円が出たらタップ<br>
+        3. 天井（上空）に桜が出現します
+    </div>
+
+    <model-viewer 
+        src="sakura_tree.glb" 
+        ar 
+        ar-modes="webxr scene-viewer quick-look" 
+        camera-controls 
+        shadow-intensity="1"
+        camera-orbit="0deg 75deg 5m"
+        min-camera-orbit="auto auto auto"
+        max-camera-orbit="auto auto auto"
+        ar-placement="floor">
+        
+        <button slot="ar-button" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 15px 30px; border-radius: 30px; border: none; background: #FFB6C1; color: white; font-weight: bold;">
+            🌸 家の中で検証開始
+        </button>
+    </model-viewer>
+
+    <script>
+        const modelViewer = document.querySelector("model-viewer");
+        
+        // AR起動時にモデルを「床から上」に移動させる
+        modelViewer.addEventListener('ar-status', (event) => {
+            if(event.detail.status === 'session-started'){
+                // ここで高さを調整（0 2 0 なら床から2メートル上）
+                modelViewer.setAttribute('position', '0 2 0');
+            }
+        });
+    </script>
+</body>
+</html>
