@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Ginza Sakura Sky - Loop</title>
+    <title>Ginza Sakura Sky - Image Version</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
@@ -30,9 +30,11 @@
              arjs="sourceType: webcam; debugUIEnabled: false;">
       
       <a-assets>
+        <img id="sakura-img" src="img/sakura.png">
+        
         <a-mixin id="petal" 
-                 geometry="primitive: plane; width: 0.05; height: 0.05" 
-                 material="color: #FFB6C1; side: double; transparent: true; opacity: 0.8; shader: flat">
+                 geometry="primitive: plane; width: 0.12; height: 0.12" 
+                 material="src: #sakura-img; transparent: true; alphaTest: 0.5; side: double; shader: flat">
         </a-mixin>
       </a-assets>
 
@@ -44,7 +46,7 @@
       const startBtn = document.querySelector('#start-btn');
       const overlay = document.querySelector('#overlay');
 
-      const MAX_PETALS = 350; // 空間に漂う花びらの合計数
+      const MAX_PETALS = 300; 
 
       startBtn.addEventListener('click', function() {
         if (typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -64,7 +66,6 @@
 
       function initAR() {
         overlay.style.display = 'none';
-        // 初期の花びらを時間差で生成
         for (let i = 0; i < MAX_PETALS; i++) {
           setTimeout(() => createPetal(), Math.random() * 10000);
         }
@@ -74,40 +75,36 @@
         const petal = document.createElement('a-entity');
         petal.setAttribute('mixin', 'petal');
         
-        // 周囲360度、半径2m〜18mの広範囲に配置
         const angle = Math.random() * Math.PI * 2;
         const radius = 2 + Math.random() * 16;
         const x = Math.cos(angle) * radius;
         const z = Math.sin(angle) * radius;
         
-        // 開始位置（上空）と終了位置（足元より下まで突き抜ける）
         const startY = 8 + Math.random() * 5; 
-        const endY = -10; // 床で止めず、はるか下まで落とす
+        const endY = -10; 
 
         petal.setAttribute('position', `${x} ${startY} ${z}`);
         
-        // 落下速度（10秒〜20秒かけてゆっくり）
-        const fallDuration = 10000 + Math.random() * 10000;
+        const fallDuration = 12000 + Math.random() * 10000;
 
         petal.setAttribute('animation__fall', {
           property: 'position',
-          to: `${x + (Math.random() - 0.5) * 4} ${endY} ${z + (Math.random() - 0.5) * 4}`,
+          to: `${x + (Math.random() - 0.5) * 6} ${endY} ${z + (Math.random() - 0.5) * 6}`,
           dur: fallDuration,
           easing: 'linear',
           loop: false
         });
 
-        // ひらひら回るアニメーション
+        // 回転を少し不規則にしてひらひら感をアップ
         petal.setAttribute('animation__rotate', {
           property: 'rotation',
-          to: `${Math.random() * 360} ${Math.random() * 360} ${Math.random() * 360}`,
-          dur: 3000 + Math.random() * 2000,
+          to: `${Math.random() * 360} ${Math.random() * 720} ${Math.random() * 360}`,
+          dur: 4000 + Math.random() * 3000,
           loop: true
         });
 
         sceneEl.appendChild(petal);
 
-        // 画面外（下方）に消えたら削除して、新しいのを上から出す
         setTimeout(() => {
           if (petal.parentNode) {
             petal.parentNode.removeChild(petal);
