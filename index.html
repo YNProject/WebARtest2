@@ -46,61 +46,101 @@
 const startBtn = document.querySelector('#start-btn');
 const overlay = document.querySelector('#overlay');
 
-const MAX_PETALS = 1000; // 常に空間に漂う花びらの合計数
-let petals = [];        // 風の制御用に花びらを管理する配列
+const MAX_PETALS = 600; // 舞い落ちる花びらの数
+let petals = [];        // 風の制御用に、舞い落ちる花びらのみを管理する配列
 
 // --- 1. センサー許可と開始の処理 ---
 startBtn.addEventListener('click', function() {
   if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-    // iOS (Safari) 用の許可リクエスト
     DeviceOrientationEvent.requestPermission()
       .then(permissionState => {
         if (permissionState === 'granted') {
           initAR();
         } else {
-          alert('スマホの傾きセンサーを許可してください。設定からブラウザの「動作と方向」をオンにする必要があります。');
+          alert('センサーの許可が必要です。ブラウザの設定で「動作と方向」をオンにしてください。');
         }
       })
       .catch(console.error);
   } else {
-    // Android や PC 用
     initAR();
   }
 });
 
-// --- 2. 初期化とループの開始 ---
+// --- 2. 初期化 ---
 function initAR() {
   overlay.style.display = 'none';
 
-  // 初期の花びらを15秒かけてじわじわと生成（一斉に出るのを防ぐ）
+  // 【新演出】空中に「桜の塊（木）」を数箇所に配置
+  // createTreePart(中心のX, 中心のZ, 花の数)
+  createTreePart(0, -6, 150);    // 正面
+  createTreePart(5, -5, 120);    // 右前方
+  createTreePart(-5, -5, 120);   // 左前方
+  createTreePart(2, -10, 100);   // 少し奥
+
+  // 舞い落ちる花びらをじわじわ生成
   for (let i = 0; i < MAX_PETALS; i++) {
     setTimeout(() => createPetal(), Math.random() * 15000);
   }
 
-  // 不規則なタイミングで吹く「風」のサイクルを開始
+  // 不規則な「風」のサイクルを開始
   scheduleNextWind();
 }
 
-// --- 3. 花びらの生成と寿命（循環）の定義 ---
+// --- 3. 桜の「塊（木）」を作る関数 ---
+function createTreePart(centerX, centerZ, count) {
+  for (let i = 0; i < count; i++) {
+    const leaf = document.createElement('a-entity');
+    leaf.setAttribute('mixin', 'petal');
+    
+    // かたまりの広がりを定義（半径2m程度の範囲にランダム配置）
+    const angle = Math.random() * Math.PI * 2;
+    const radius = Math.random() * 2.5; 
+    const x = centerX + Math.cos(angle) * radius;
+    const z = centerZ + Math.sin(angle) * radius;
+    const y = 5 + Math.random() * 3; // 地上5m〜8mの高さ
+
+    leaf.setAttribute('position', `${x} ${y} ${z}`);
+
+    // その場で小さくゆらゆらさせるアニメーション
+    leaf.setAttribute('animation__sway', {
+      property: 'position',
+      to: `${x + (Math.random() - 0.5) * 0.4} ${y + (Math.random() - 0.5) * 0.4} ${z}`,
+      dur: 2000 + Math.random() * 3000,
+      dir: 'alternate',
+      loop: true,
+      easing: 'easeInOutSine'
+    });
+
+    // わずかに回転させてキラキラさせる
+    leaf.setAttribute('animation__rotate', {
+      property: 'rotation',
+      to: `${Math.random() * 360} ${Math.random() * 360} ${Math.random() * 360}`,
+      dur: 5000 + Math.random() * 5000,
+      loop: true,
+      easing: 'linear'
+    });
+
+    sceneEl.appendChild(leaf);
+  }
+}
+
+// --- 4. 舞い落ちる花びらの生成（循環） ---
 function createPetal() {
   const petal = document.createElement('a-entity');
   petal.setAttribute('mixin', 'petal');
   
-  // 周囲360度、半径2m〜18mの広範囲にランダム配置
   const angle = Math.random() * Math.PI * 2;
-  const radius = 2 + Math.random() * 16;
+  const radius = 2 + Math.random() * 18; // 半径18mまで広げる
   const x = Math.cos(angle) * radius;
   const z = Math.sin(angle) * radius;
   
-  const startY = 8 + Math.random() * 5; // 空高くから
-  const endY = -10;                    // 床を突き抜けて下まで
+  const startY = 8 + Math.random() * 5; 
+  const endY = -10; 
 
   petal.setAttribute('position', `${x} ${startY} ${z}`);
   
-  // 落下時間（寿命）：10秒〜20秒の間でランダム
-  const fallDuration = 10000 + Math.random() * 10000;
+  const fallDuration = 10000 + Math.random() * 12000;
 
-  // 落下アニメーションの設定
   petal.setAttribute('animation__fall', {
     property: 'position',
     to: `${x + (Math.random() - 0.5) * 4} ${endY} ${z + (Math.random() - 0.5) * 4}`,
@@ -109,55 +149,47 @@ function createPetal() {
     loop: false
   });
 
-  // ひらひらと舞う回転アニメーション
   petal.setAttribute('animation__rotate', {
     property: 'rotation',
     to: `${Math.random() * 360} ${Math.random() * 720} ${Math.random() * 360}`,
-    dur: 4000 + Math.random() * 3000,
+    dur: 3000 + Math.random() * 3000,
     loop: true
   });
 
   sceneEl.appendChild(petal);
-  petals.push(petal); // 配列へ追加
+  petals.push(petal); 
 
-  // 寿命（落下完了）が来たら削除して、新しいのを1枚補充する
   setTimeout(() => {
     if (petal.parentNode) {
       petal.parentNode.removeChild(petal);
-      petals = petals.filter(p => p !== petal); // 配列からも削除
-      createPetal(); // 新規生成
+      petals = petals.filter(p => p !== petal);
+      createPetal();
     }
   }, fallDuration);
 }
 
-// --- 4. ランダムな風の制御 ---
+// --- 5. 不規則な風の制御 ---
 function scheduleNextWind() {
-  // 次の風までの間隔を10秒〜25秒の間でランダムに決定
   const nextWindDelay = 10000 + Math.random() * 15000;
-  
   setTimeout(() => {
     blowWind();
-    scheduleNextWind(); // 風が吹き終わったら次を予約
+    scheduleNextWind();
   }, nextWindDelay);
 }
 
 function blowWind() {
-  // 風の強さをランダムに決定
   const windStrength = 10 + Math.random() * 20;
-  // 風の方向を360度ランダムに決定
   const windAngle = Math.random() * Math.PI * 2;
   const windX = Math.cos(windAngle) * windStrength;
   const windZ = Math.sin(windAngle) * windStrength;
-  // 風が吹き抜ける時間（4秒〜10秒）
-  const windDuration = 4000 + Math.random() * 6000;
+  const windDuration = 5000 + Math.random() * 5000;
 
-  // 今あるすべての花びらに風の影響を与える
   petals.forEach(petal => {
     const currentPos = petal.getAttribute('position');
     petal.setAttribute('animation__fall', {
       to: `${currentPos.x + windX} -10 ${currentPos.z + windZ}`,
       dur: windDuration,
-      easing: 'easeOutQuad' // 吹き始めに勢いがある自然な動き
+      easing: 'easeOutQuad'
     });
   });
 }
