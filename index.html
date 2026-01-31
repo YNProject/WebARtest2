@@ -1,52 +1,60 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
     <meta charset="utf-8">
-    <title>Sakura AR Test (Overhead)</title>
-    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sakura AR Test</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
-        body { margin: 0; }
-        model-viewer { width: 100%; height: 100vh; }
-        .instruction {
-            position: absolute; top: 10px; left: 10px;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px; border-radius: 8px; font-size: 14px;
+        body { margin: 0; background-color: #222; }
+        model-viewer {
+            width: 100vw;
+            height: 100vh;
+        }
+        #ar-button {
+            position: absolute; bottom: 30px; left: 50%;
+            transform: translateX(-50%);
+            padding: 16px 32px; background: #FFB6C1;
+            border-radius: 30px; border: none; color: white;
+            font-weight: bold; z-index: 100;
         }
     </style>
 </head>
 <body>
 
-    <div class="instruction">
-        1. 床をゆっくり写してスキャン<br>
-        2. 床に円が出たらタップ<br>
-        3. 天井（上空）に桜が出現します
-    </div>
-
     <model-viewer 
+        id="sakura-model"
         src="sakura_tree.glb" 
+        ios-src="" 
         ar 
         ar-modes="webxr scene-viewer quick-look" 
         camera-controls 
-        shadow-intensity="1"
-        camera-orbit="0deg 75deg 5m"
-        min-camera-orbit="auto auto auto"
-        max-camera-orbit="auto auto auto"
-        ar-placement="floor">
+        touch-action="pan-y"
+        alt="桜の木">
         
-        <button slot="ar-button" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 15px 30px; border-radius: 30px; border: none; background: #FFB6C1; color: white; font-weight: bold;">
-            🌸 家の中で検証開始
+        <button slot="ar-button" id="ar-button">
+            🌸 ARを開始する
         </button>
+
+        <div id="status" style="color: white; text-align: center; padding-top: 20px;">
+            モデル読み込み中...
+        </div>
     </model-viewer>
 
     <script>
-        const modelViewer = document.querySelector("model-viewer");
-        
-        // AR起動時にモデルを「床から上」に移動させる
-        modelViewer.addEventListener('ar-status', (event) => {
-            if(event.detail.status === 'session-started'){
-                // ここで高さを調整（0 2 0 なら床から2メートル上）
-                modelViewer.setAttribute('position', '0 2 0');
-            }
+        const mv = document.querySelector('#sakura-model');
+        const status = document.querySelector('#status');
+
+        // モデルの読み込み完了をチェック
+        mv.addEventListener('load', () => {
+            status.style.display = 'none';
+            console.log("Model loaded!");
+        });
+
+        // エラーチェック
+        mv.addEventListener('error', (e) => {
+            status.innerText = "エラー: モデルが見つからないか重すぎます";
+            console.error(e);
         });
     </script>
 </body>
