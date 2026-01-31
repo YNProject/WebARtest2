@@ -2,28 +2,33 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Ginza Sakura Sky - Image Version</title>
+    <title>Ginza Sakura Sky - Ultimate Edition</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
+
     <style>
       #overlay {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.6); display: flex; justify-content: center;
+        background: rgba(0,0,0,0.7); display: flex; justify-content: center;
         align-items: center; z-index: 9999; color: white; flex-direction: column;
-        font-family: sans-serif;
+        font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif;
+        text-align: center;
       }
       button {
-        padding: 15px 35px; font-size: 18px; background: #FFB6C1;
-        border: none; border-radius: 30px; cursor: pointer; color: #444; font-weight: bold;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        padding: 18px 40px; font-size: 20px; background: #FFB6C1;
+        border: none; border-radius: 50px; cursor: pointer; color: #444; font-weight: bold;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: 0.3s;
       }
+      button:active { transform: scale(0.95); }
     </style>
   </head>
   <body style="margin: 0; overflow: hidden;">
     
     <div id="overlay">
-      <h2 style="margin-bottom: 20px;">銀座の空に桜を咲かせます</h2>
-      <button id="start-btn">ARを開始する</button>
+      <h2 style="margin-bottom: 10px;">銀座の空に桜を</h2>
+      <p style="margin-bottom: 30px; font-size: 14px; opacity: 0.8;">周囲の安全を確認して開始してください</p>
+      <button id="start-btn">桜を咲かせる</button>
     </div>
 
     <a-scene id="scene" embedded vr-mode-ui="enabled: false" 
@@ -43,139 +48,161 @@
 
     <script>
       const sceneEl = document.querySelector('#scene');
-const startBtn = document.querySelector('#start-btn');
-const overlay = document.querySelector('#overlay');
+      const startBtn = document.querySelector('#start-btn');
+      const overlay = document.querySelector('#overlay');
 
-const MAX_PETALS = 600; // 舞い散る花びら
-let petals = [];
+      const MAX_FALLING_PETALS = 600; // 舞い落ちる枚数
+      let fallingPetals = []; 
+      let cloudPetals = [];   
 
-startBtn.addEventListener('click', function() {
-  if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-    DeviceOrientationEvent.requestPermission()
-      .then(permissionState => {
-        if (permissionState === 'granted') { initAR(); }
-        else { alert('センサーの許可が必要です'); }
-      })
-      .catch(console.error);
-  } else { initAR(); }
-});
+      // 開始ボタンの処理
+      startBtn.addEventListener('click', function() {
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+          DeviceOrientationEvent.requestPermission()
+            .then(permissionState => {
+              if (permissionState === 'granted') { initAR(); }
+              else { alert('センサーの許可が必要です。'); }
+            })
+            .catch(console.error);
+        } else {
+          initAR();
+        }
+      });
 
-function initAR() {
-  overlay.style.display = 'none';
+      function initAR() {
+        overlay.style.display = 'none';
 
-  // ★【ボリューム爆増】「桜の雲」を空に20個配置
-  // 1枚ずつではなく、巨大な「桜のカーテン」を頭上に広げる
-  for (let i = 0; i < 20; i++) {
-    createSakuraCloud();
-  }
+        // 1. 【遠景】空を埋め尽くす桜の屋根（天蓋）を配置
+        // 1枚に数十枚が描かれた板を35箇所に浮かべてボリュームを出す
+        for (let i = 0; i < 35; i++) {
+          createSakuraCloud();
+        }
 
-  for (let i = 0; i < MAX_PETALS; i++) {
-    setTimeout(() => createPetal(), Math.random() * 15000);
-  }
-  scheduleNextWind();
-}
+        // 2. 【近景】舞い落ちる1枚ずつの桜を順次生成
+        for (let i = 0; i < MAX_FALLING_PETALS; i++) {
+          setTimeout(() => createFallingPetal(), Math.random() * 15000);
+        }
 
-// ★ 空を埋め尽くすための新関数
-function createSakuraCloud() {
-  const cloud = document.createElement('a-entity');
-  
-  // 今の桜の画像を大きく使い、1枚の大きさを「5m〜10m」の巨大なサイズに設定
-  // これを重ねることで、数万枚あるように錯覚させます
-  cloud.setAttribute('geometry', {
-    primitive: 'plane',
-    width: 5 + Math.random() * 5,
-    height: 5 + Math.random() * 5
-  });
+        // 3. 風のループを開始
+        scheduleNextWind();
+      }
 
-  cloud.setAttribute('material', {
-    src: '#sakura-img',
-    transparent: true,
-    opacity: 0.4, // 重なりを綺麗に見せるため薄くする
-    alphaTest: 0.1,
-    side: 'double',
-    shader: 'flat'
-  });
+      // 空の桜（天蓋）を生成
+      function createSakuraCloud() {
+        const cloud = document.createElement('a-entity');
+        
+        const size = 8 + Math.random() * 6; // 8m〜14mの巨大な板
+        cloud.setAttribute('geometry', { primitive: 'plane', width: size, height: size });
 
-  // 頭上（高さ6m〜12m）の広い範囲にランダム配置
-  const x = (Math.random() - 0.5) * 40;
-  const z = (Math.random() - 0.5) * 40;
-  const y = 7 + Math.random() * 5;
+        const opacity = 0.2 + Math.random() * 0.4; 
+        const repeatNum = Math.floor(6 + Math.random() * 8); // 密集度をバラつかせる
+        
+        // 色味にバリエーションを出す
+        const colors = ['#ffffff', '#ffeef2', '#ffd1dc'];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
-  cloud.setAttribute('position', `${x} ${y} ${z}`);
-  
-  // 常にユーザーの方を向く（ビルボード）設定
-  // A-Frameの標準機能で「どこを向いても桜が正面に見える」ようにし、
-  // ペラペラ感をなくします
-  cloud.setAttribute('look-at', '[camera]');
+        cloud.setAttribute('material', {
+          src: '#sakura-img',
+          color: randomColor,
+          transparent: true,
+          opacity: opacity,
+          alphaTest: 0.2,
+          repeat: `${repeatNum} ${repeatNum}`,
+          side: 'double',
+          shader: 'flat'
+        });
 
-  // ゆっくりと空で回転・浮遊させる
-  cloud.setAttribute('animation', {
-    property: 'rotation',
-    to: '0 0 360',
-    dur: 30000 + Math.random() * 20000,
-    easing: 'linear',
-    loop: true
-  });
+        const x = (Math.random() - 0.5) * 60;
+        const z = (Math.random() - 0.5) * 60;
+        const y = 8 + Math.random() * 6;
+        cloud.setAttribute('position', `${x} ${y} ${z}`);
 
-  sceneEl.appendChild(cloud);
-}
+        // わずかに傾けて立体感を出す
+        const rx = -90 + (Math.random() - 0.5) * 25;
+        const ry = Math.random() * 360;
+        cloud.setAttribute('rotation', `${rx} ${ry} 0`);
 
-// --- 以下、createPetal, scheduleNextWind, blowWind は以前のコードと同じ ---
-function createPetal() {
-  const petal = document.createElement('a-entity');
-  petal.setAttribute('mixin', 'petal');
-  const angle = Math.random() * Math.PI * 2;
-  const radius = 2 + Math.random() * 18;
-  const x = Math.cos(angle) * radius;
-  const z = Math.sin(angle) * radius;
-  const startY = 8 + Math.random() * 5; 
-  const endY = -10; 
-  petal.setAttribute('position', `${x} ${startY} ${z}`);
-  const fallDuration = 10000 + Math.random() * 12000;
-  petal.setAttribute('animation__fall', {
-    property: 'position',
-    to: `${x + (Math.random() - 0.5) * 4} ${endY} ${z + (Math.random() - 0.5) * 4}`,
-    dur: fallDuration,
-    easing: 'linear',
-    loop: false
-  });
-  petal.setAttribute('animation__rotate', {
-    property: 'rotation',
-    to: `${Math.random() * 360} ${Math.random() * 720} ${Math.random() * 360}`,
-    dur: 3000 + Math.random() * 3000,
-    loop: true
-  });
-  sceneEl.appendChild(petal);
-  petals.push(petal); 
-  setTimeout(() => {
-    if (petal.parentNode) {
-      petal.parentNode.removeChild(petal);
-      petals = petals.filter(p => p !== petal);
-      createPetal();
-    }
-  }, fallDuration);
-}
+        sceneEl.appendChild(cloud);
+        cloudPetals.push(cloud);
+      }
 
-function scheduleNextWind() {
-  const nextWindDelay = 10000 + Math.random() * 15000;
-  setTimeout(() => { blowWind(); scheduleNextWind(); }, nextWindDelay);
-}
+      // 舞い落ちる花びらを生成（1枚ずつ）
+      function createFallingPetal() {
+        const petal = document.createElement('a-entity');
+        petal.setAttribute('mixin', 'petal');
+        
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 2 + Math.random() * 20;
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        const startY = 8 + Math.random() * 5; 
 
-function blowWind() {
-  const windStrength = 10 + Math.random() * 20;
-  const windAngle = Math.random() * Math.PI * 2;
-  const windX = Math.cos(windAngle) * windStrength;
-  const windZ = Math.sin(windAngle) * windStrength;
-  const windDuration = 5000 + Math.random() * 5000;
-  petals.forEach(petal => {
-    const currentPos = petal.getAttribute('position');
-    petal.setAttribute('animation__fall', {
-      to: `${currentPos.x + windX} -10 ${currentPos.z + windZ}`,
-      dur: windDuration,
-      easing: 'easeOutQuad'
-    });
-  });
-}
+        petal.setAttribute('position', `${x} ${startY} ${z}`);
+        
+        const fallDuration = 10000 + Math.random() * 12000;
+
+        // 落下アニメーション
+        petal.setAttribute('animation__fall', {
+          property: 'position',
+          to: `${x + (Math.random() - 0.5) * 6} -10 ${z + (Math.random() - 0.5) * 6}`,
+          dur: fallDuration,
+          easing: 'linear'
+        });
+
+        // 3軸回転で1枚の花びららしさを表現
+        petal.setAttribute('animation__rotate', {
+          property: 'rotation',
+          to: `${Math.random() * 360} ${Math.random() * 720} ${Math.random() * 360}`,
+          dur: 3000 + Math.random() * 3000,
+          loop: true
+        });
+
+        sceneEl.appendChild(petal);
+        fallingPetals.push(petal); 
+
+        // 寿命がきたら再生成
+        setTimeout(() => {
+          if (petal.parentNode) {
+            petal.parentNode.removeChild(petal);
+            fallingPetals = fallingPetals.filter(p => p !== petal);
+            createFallingPetal();
+          }
+        }, fallDuration);
+      }
+
+      function scheduleNextWind() {
+        // 10〜25秒おきに風を吹かせる
+        setTimeout(() => { blowWind(); scheduleNextWind(); }, 10000 + Math.random() * 15000);
+      }
+
+      function blowWind() {
+        const windAngle = Math.random() * Math.PI * 2;
+        const windStrength = 12 + Math.random() * 20;
+        const windX = Math.cos(windAngle) * windStrength;
+        const windZ = Math.sin(windAngle) * windStrength;
+        const windDuration = 6000 + Math.random() * 4000;
+
+        // 落ちる桜：大きく流される
+        fallingPetals.forEach(petal => {
+          const currentPos = petal.getAttribute('position');
+          petal.setAttribute('animation__fall', {
+            to: `${currentPos.x + windX} -10 ${currentPos.z + windZ}`,
+            dur: windDuration,
+            easing: 'easeOutQuad'
+          });
+        });
+
+        // 空の桜：水平にゆったりスライドする
+        cloudPetals.forEach(cloud => {
+          const currentPos = cloud.getAttribute('position');
+          cloud.setAttribute('animation__wind', {
+            property: 'position',
+            to: `${currentPos.x + windX * 0.2} ${currentPos.y} ${currentPos.z + windZ * 0.2}`,
+            dur: windDuration,
+            easing: 'easeOutQuad'
+          });
+        });
+      }
     </script>
   </body>
 </html>
