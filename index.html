@@ -86,11 +86,12 @@ function initAR() {
 
 // --- 桜色を計算で生成（白飛び防止・ランダム性重視） ---
 function getRandomSakuraColor() {
-  // 色相: 340-355（ピンク）、彩度: 70-100%（強め）、輝度: 65-80%（白飛びしない程度に抑える）
-  const h = 340 + Math.random() * 15;
-  const s = 70 + Math.random() * 30;
-  const l = 5 + Math.random() * 15;
-  return `hsl(${h}, ${s}%, ${l}%)`;
+  const colors = [
+    '#FF00FF', // マゼンタ（絶対ピンクに見えるはずの色）
+    '#FF1493', // ディープピンク
+    '#C71585'  // ミディアムバイオレットレッド（影用）
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
 }
 
 // --- 桜の塊（雲）の生成関数 ---
