@@ -87,11 +87,31 @@ function initAR() {
 
 // --- 雲（遠くの桜の塊）の生成関数：広範囲バージョン ---
 function createClouds() {
-  // レイヤーごとに分けて配置することで奥行きを出す
   const layers = [
-    { count: 15, radiusMin: 35, radiusMax: 45, size: 8,  opacity: 0.9 }, // 中景
-    { count: 20, radiusMin: 60, radiusMax: 90, size: 15, opacity: 0.7 }, // 遠景
-    { count: 10, radiusMin: 120, radiusMax: 180, size: 30, opacity: 0.4 } // 超遠景（薄く巨大）
+    { 
+      name: "遠景", 
+      radiusMin: 50, radiusMax: 80, 
+      count: 80,     // 数を大幅に増やして密度を出す
+      size: 5,       // 小さく（粒子感）
+      opacity: 0.4,  // かすかに見える程度
+      yMin: 20, yMax: 40 
+    },
+    { 
+      name: "中景", 
+      radiusMin: 25, radiusMax: 35, 
+      count: 30, 
+      size: 10, 
+      opacity: 0.7, 
+      yMin: 12, yMax: 25 
+    },
+    { 
+      name: "近景", 
+      radiusMin: 8, radiusMax: 15, 
+      count: 8,      // 数は少なめに
+      size: 20,      // 目の前を覆う迫力
+      opacity: 0.9,  // はっきりと
+      yMin: 5, yMax: 15 
+    }
   ];
 
   layers.forEach(layer => {
@@ -102,24 +122,24 @@ function createClouds() {
       const radius = layer.radiusMin + Math.random() * (layer.radiusMax - layer.radiusMin);
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
-      const y = 10 + Math.random() * 25;
+      const y = layer.yMin + Math.random() * (layer.yMax - layer.yMin);
 
       cloud.setAttribute('position', `${x} ${y} ${z}`);
       
-      // 常にユーザーを向かせる
+      // 常にユーザーの方向を向かせる（板っぽさを消す）
       const rotationY = (angle * 180 / Math.PI) * -1 + 90;
       cloud.setAttribute('rotation', `-10 ${rotationY} 0`);
 
-      // 遠くのものほど大きく、かつ透明度を下げて「空気遠近法」を再現
-      cloud.setAttribute('geometry', `primitive: plane; width: ${layer.size}; height: ${layer.size * 0.6}`);
+      // 指定されたサイズを反映（横幅:高さ = 1.5:1 程度の比率）
+      cloud.setAttribute('geometry', `primitive: plane; width: ${layer.size}; height: ${layer.size * 0.7}`);
       cloud.setAttribute('material', `src: #cloud-img; transparent: true; alphaTest: 0.01; side: double; shader: flat; depthTest: false; opacity: ${layer.opacity}`);
 
-      // ゆっくりと「水平方向」に漂わせる（視差効果）
-      const drift = (Math.random() - 0.5) * (radius * 0.2);
+      // 遠近で動くスピードを変える（遠いほどゆっくり漂う）
+      const driftSpeed = 35000 - (layer.radiusMin * 200);
       cloud.setAttribute('animation', {
         property: 'position',
-        to: `${x + drift} ${y + (Math.random() - 0.5) * 5} ${z + drift}`,
-        dur: 30000 + Math.random() * 20000,
+        to: `${x + (Math.random() - 0.5) * (layer.size)} ${y + (Math.random() - 0.5) * 5} ${z + (Math.random() - 0.5) * (layer.size)}`,
+        dur: driftSpeed + Math.random() * 15000,
         dir: 'alternate',
         loop: true,
         easing: 'easeInOutSine'
