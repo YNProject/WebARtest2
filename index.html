@@ -87,10 +87,11 @@ function initAR() {
 // --- 桜色を計算で生成（白飛び防止・ランダム性重視） ---
 function getRandomSakuraColor() {
   const colors = [
-    '#FFB6C1', // ライトピンク（これが出るかチェック）
-    '#FF69B4', // ホットピンク（これくらいがARでは映える）
-    '#EE82EE', // バイオレット（奥行きが出る）
-    '#F08080'  // ライトコーラル（少し暖かみ）
+    '#FFF0F5', // LavenderBlush (ほぼ白に近い、ごく薄いピンク)
+    '#FFE4E1', // MistyRose (少し暖かみのある白ピンク)
+    '#FFD1DC', // Cherry Blossom Pink (王道の桜色)
+    '#FFC0CB', // Pink (少しだけ主張するピンク)
+    '#F8BBD0'  // 影用の少し落ち着いたピンク
   ];
   return colors[Math.floor(Math.random() * colors.length)];
 }
