@@ -87,44 +87,47 @@ function initAR() {
 
 // --- 雲（遠くの桜の塊）の生成関数：広範囲バージョン ---
 function createClouds() {
-  const TOTAL_CLOUDS = 35; 
+  // レイヤーごとに分けて配置することで奥行きを出す
+  const layers = [
+    { count: 15, radiusMin: 35, radiusMax: 45, size: 8,  opacity: 0.9 }, // 中景
+    { count: 20, radiusMin: 60, radiusMax: 90, size: 15, opacity: 0.7 }, // 遠景
+    { count: 10, radiusMin: 120, radiusMax: 180, size: 30, opacity: 0.4 } // 超遠景（薄く巨大）
+  ];
 
-  for (let i = 0; i < TOTAL_CLOUDS; i++) {
-    const cloud = document.createElement('a-entity');
-    cloud.setAttribute('mixin', 'cloud-mixin');
+  layers.forEach(layer => {
+    for (let i = 0; i < layer.count; i++) {
+      const cloud = document.createElement('a-entity');
+      
+      const angle = Math.random() * Math.PI * 2;
+      const radius = layer.radiusMin + Math.random() * (layer.radiusMax - layer.radiusMin);
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      const y = 10 + Math.random() * 25;
 
-    // --- 50m〜80mの超遠方に配置 ---
-    const angle = Math.random() * Math.PI * 2;
-    const radius = 50 + Math.random() * 30; // かなり遠くへ
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
-    
-    // 遠くの空に浮かんでいるように、高さも少し上げます（15m〜30m）
-    const y = 15 + Math.random() * 15;
+      cloud.setAttribute('position', `${x} ${y} ${z}`);
+      
+      // 常にユーザーを向かせる
+      const rotationY = (angle * 180 / Math.PI) * -1 + 90;
+      cloud.setAttribute('rotation', `-10 ${rotationY} 0`);
 
-    cloud.setAttribute('position', `${x} ${y} ${z}`);
-    
-    // --- 常に自分の方を向かせる ---
-    const rotationY = (angle * 180 / Math.PI) * -1 + 90;
-    // 遠景なので、少しだけ仰角をつける（-10度）
-    cloud.setAttribute('rotation', `-10 ${rotationY} 0`);
+      // 遠くのものほど大きく、かつ透明度を下げて「空気遠近法」を再現
+      cloud.setAttribute('geometry', `primitive: plane; width: ${layer.size}; height: ${layer.size * 0.6}`);
+      cloud.setAttribute('material', `src: #cloud-img; transparent: true; alphaTest: 0.01; side: double; shader: flat; depthTest: false; opacity: ${layer.opacity}`);
 
-    // 遠いのでサイズをさらに巨大化（15m〜25m級の桜の雲）
-    const scale = 1.0 + Math.random() * 1.5; 
-    cloud.setAttribute('scale', `${scale} ${scale} 1`);
+      // ゆっくりと「水平方向」に漂わせる（視差効果）
+      const drift = (Math.random() - 0.5) * (radius * 0.2);
+      cloud.setAttribute('animation', {
+        property: 'position',
+        to: `${x + drift} ${y + (Math.random() - 0.5) * 5} ${z + drift}`,
+        dur: 30000 + Math.random() * 20000,
+        dir: 'alternate',
+        loop: true,
+        easing: 'easeInOutSine'
+      });
 
-    // 遠くのものは動きをゆっくりに（ゆったりとした浮遊感）
-    cloud.setAttribute('animation', {
-      property: 'position',
-      to: `${x} ${y + (Math.random() - 0.5) * 5} ${z}`,
-      dur: 20000 + Math.random() * 10000,
-      dir: 'alternate',
-      loop: true,
-      easing: 'easeInOutSine'
-    });
-
-    sceneEl.appendChild(cloud);
-  }
+      sceneEl.appendChild(cloud);
+    }
+  });
 }
 
 // --- 桜の生成（既存ロジック） ---
