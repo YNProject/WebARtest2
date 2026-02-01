@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Ginza Sakura Sky - Glitter Edition</title>
+    <title>Ginza Sakura Sky - Delicate Glitter Version</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
@@ -33,7 +33,6 @@
         <img id="sakura-white-img" src="img/sakuraWhite.png">
         <img id="cloud-img" src="img/cloud.png">
         <img id="glitter-img" src="img/glitter1.png">
-        <img id="ring-img" src="img/ring3.png">
         
         <a-mixin id="petal" 
                   geometry="primitive: plane; width: 0.15; height: 0.15" 
@@ -45,8 +44,8 @@
         </a-mixin>
 
         <a-mixin id="glitter-mixin"
-                  geometry="primitive: plane; width: 1; height: 1" 
-                  material="transparent: true; shader: flat; side: double; depthTest: false; blending: additive;">
+                  geometry="primitive: plane; width: 0.3; height: 0.3" 
+                  material="src: #glitter-img; transparent: true; shader: flat; side: double; depthTest: false; blending: additive;">
         </a-mixin>
       </a-assets>
 
@@ -79,20 +78,17 @@ function getRandomSakuraColor() {
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-// 雲と光の粒を生成
 function createCloudsAndGlitters() {
   const layers = [
-    { name: "遠景", radiusMin: 50, radiusMax: 80, count: 150, size: 6, opacity: 0.3, yMin: 15, yMax: 35, glitterCount: 40 },
-    { name: "中景", radiusMin: 25, radiusMax: 35, count: 60, size: 8, opacity: 0.5, yMin: 12, yMax: 25, glitterCount: 20 },
-    { name: "近景", radiusMin: 8, radiusMax: 15, count: 15, size: 16, opacity: 0.7, yMin: 5, yMax: 15, glitterCount: 10 }
+    { name: "遠景", radiusMin: 50, radiusMax: 80, count: 150, size: 6, opacity: 0.3, yMin: 15, yMax: 35, glitterCount: 60 },
+    { name: "中景", radiusMin: 25, radiusMax: 35, count: 60, size: 8, opacity: 0.5, yMin: 12, yMax: 25, glitterCount: 30 },
+    { name: "近景", radiusMin: 8, radiusMax: 15, count: 15, size: 16, opacity: 0.7, yMin: 5, yMax: 15, glitterCount: 15 }
   ];
 
   layers.forEach(layer => {
-    // 桜の雲の生成
     for (let i = 0; i < layer.count; i++) {
       createCloudEntity(layer);
     }
-    // 光の粒（グリッター）の生成
     for (let j = 0; j < layer.glitterCount; j++) {
       createGlitterEntity(layer);
     }
@@ -107,7 +103,6 @@ function createCloudEntity(layer) {
   const x = Math.cos(angle) * radius;
   const z = Math.sin(angle) * radius;
   const y = layer.yMin + Math.random() * (layer.yMax - layer.yMin);
-
   cloud.setAttribute('position', `${x} ${y} ${z}`);
   const rotationY = (angle * 180 / Math.PI) * -1 + 90;
   cloud.setAttribute('rotation', `-10 ${rotationY} 0`);
@@ -116,12 +111,11 @@ function createCloudEntity(layer) {
   sceneEl.appendChild(cloud);
 }
 
-// --- 光の粒（グリッター）を生成する関数 ---
+// --- 光の粒（グリッター）を繊細にする修正版 ---
 function createGlitterEntity(layer) {
   const glitter = document.createElement('a-entity');
   glitter.setAttribute('mixin', 'glitter-mixin');
   
-  // 雲と同じ範囲に配置
   const angle = Math.random() * Math.PI * 2;
   const radius = layer.radiusMin + Math.random() * (layer.radiusMax - layer.radiusMin);
   const x = Math.cos(angle) * radius;
@@ -129,32 +123,26 @@ function createGlitterEntity(layer) {
   const y = layer.yMin + Math.random() * (layer.yMax - layer.yMin);
   glitter.setAttribute('position', `${x} ${y} ${z}`);
 
-  // 画像をランダムに選択
-  const src = Math.random() > 0.5 ? '#glitter-img' : '#ring-img';
-  // サイズをレイヤーに合わせて調整（雲よりは小さく）
-  const size = (layer.size * 0.2) + (Math.random() * 2);
-  
-  glitter.setAttribute('material', `src: ${src}; color: #FFFFFF; opacity: 0`);
+  // サイズをかなり小さく設定 (0.05〜0.3)
+  const size = 0.05 + Math.random() * 0.25;
   glitter.setAttribute('geometry', `primitive: plane; width: ${size}; height: ${size}`);
 
-  // ランダムなタイミングでチカチカさせるアニメーション
-  const duration = 1000 + Math.random() * 2000;
-  const delay = Math.random() * 5000;
+  // チカチカ感を強める（点滅を速く、透明度をランダムに）
+  const duration = 400 + Math.random() * 800; // 点滅スピードをアップ
+  const delay = Math.random() * 10000;
+  const maxOpacity = 0.5 + Math.random() * 0.5;
 
   glitter.setAttribute('animation__flicker', {
     property: 'material.opacity',
     from: 0,
-    to: 0.8,
+    to: maxOpacity,
     dur: duration,
     delay: delay,
     dir: 'alternate',
     loop: true,
-    easing: 'easeInOutSine'
+    easing: 'linear'
   });
 
-  // 常にカメラを向かせる
-  glitter.setAttribute('look-at', '[camera]');
-  // もしlook-atコンポーネントがない場合用の簡易回転（ユーザー方向）
   const rotationY = (angle * 180 / Math.PI) * -1 + 90;
   glitter.setAttribute('rotation', `0 ${rotationY} 0`);
 
