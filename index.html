@@ -72,51 +72,41 @@ startBtn.addEventListener('click', function() {
 
 function initAR() {
   overlay.style.display = 'none';
-
-  // 1. 桜の塊（雲）をレイヤー別に生成
   createClouds();
-
-  // 2. 舞い落ちる花びらを生成
   for (let i = 0; i < MAX_PETALS; i++) {
     setTimeout(() => createPetal(), Math.random() * 15000);
   }
-
   scheduleNextWind();
 }
 
-// --- 桜色を計算で生成（白飛び防止・ランダム性重視） ---
+// --- 桜の雲（白画像ベース）用の色ロジック ---
 function getRandomSakuraColor() {
   const colors = [
-    '#FFF0F5', // LavenderBlush (ほぼ白に近い、ごく薄いピンク)
-    '#FFE4E1', // MistyRose (少し暖かみのある白ピンク)
-    '#FFD1DC', // Cherry Blossom Pink (王道の桜色)
-    '#FFC0CB', // Pink (少しだけ主張するピンク)
-    '#F8BBD0'  // 影用の少し落ち着いたピンク
+    '#FFF0F5', // LavenderBlush
+    '#FFE4E1', // MistyRose
+    '#FFD1DC', // Cherry Blossom Pink
+    '#FFC0CB', // Pink
+    '#F8BBD0'  // Slightly deeper pink
   ];
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-// --- 桜の塊（雲）の生成関数 ---
+// --- 花びら（ピンク画像ベース）用の色ロジック ---
+function getPetalColor() {
+  const colors = [
+    '#FFFFFF', // そのままの色
+    '#FFFAFA', // Snow (明るさを足す)
+    '#FFF0F5', // LavenderBlush (ごく薄い色)
+    '#F5F5F5'  // WhiteSmoke (少し彩度を下げる)
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+
 function createClouds() {
   const layers = [
-    { 
-      name: "遠景", 
-      radiusMin: 50, radiusMax: 80, 
-      count: 150, size: 6, opacity: 0.3, 
-      yMin: 15, yMax: 35 
-    },
-    { 
-      name: "中景", 
-      radiusMin: 25, radiusMax: 35, 
-      count: 60, size: 8, opacity: 0.5, 
-      yMin: 12, yMax: 25 
-    },
-    { 
-      name: "近景", 
-      radiusMin: 8, radiusMax: 15, 
-      count: 15, size: 16, opacity: 0.7, 
-      yMin: 5, yMax: 15 
-    }
+    { name: "遠景", radiusMin: 50, radiusMax: 80, count: 150, size: 6, opacity: 0.3, yMin: 15, yMax: 35 },
+    { name: "中景", radiusMin: 25, radiusMax: 35, count: 60, size: 8, opacity: 0.5, yMin: 12, yMax: 25 },
+    { name: "近景", radiusMin: 8, radiusMax: 15, count: 15, size: 16, opacity: 0.7, yMin: 5, yMax: 15 }
   ];
 
   layers.forEach(layer => {
@@ -131,17 +121,13 @@ function createClouds() {
       const y = layer.yMin + Math.random() * (layer.yMax - layer.yMin);
 
       cloud.setAttribute('position', `${x} ${y} ${z}`);
-      
-      // 常にユーザーの方を向かせる
       const rotationY = (angle * 180 / Math.PI) * -1 + 90;
       cloud.setAttribute('rotation', `-10 ${rotationY} 0`);
 
-      // 色とサイズを設定
       const color = getRandomSakuraColor();
       cloud.setAttribute('geometry', `primitive: plane; width: ${layer.size}; height: ${layer.size * 0.7}`);
       cloud.setAttribute('material', `color: ${color}; opacity: ${layer.opacity}`);
 
-      // ゆっくりと浮遊させるアニメーション
       const driftSpeed = 35000 - (layer.radiusMin * 200);
       cloud.setAttribute('animation', {
         property: 'position',
@@ -157,7 +143,6 @@ function createClouds() {
   });
 }
 
-// --- 花びらの生成ロジック ---
 function createPetal() {
   const petal = document.createElement('a-entity');
   petal.setAttribute('mixin', 'petal');
@@ -166,19 +151,16 @@ function createPetal() {
   const radius = 2 + Math.random() * 16;
   const x = Math.cos(angle) * radius;
   const z = Math.sin(angle) * radius;
-  
   const startY = 8 + Math.random() * 5;
   const endY = -10;
 
   petal.setAttribute('position', `${x} ${startY} ${z}`);
 
-  // --- 花びらにもランダムな桜色を適用 ---
-  const color = getRandomSakuraColor();
-  // mixinのmaterialを上書き（色を乗せる）
+  // 花びら専用の色設定（元画像がピンクなので白系を乗せる）
+  const color = getPetalColor();
   petal.setAttribute('material', `color: ${color};`);
   
   const fallDuration = 10000 + Math.random() * 10000;
-
   petal.setAttribute('animation__fall', {
     property: 'position',
     to: `${x + (Math.random() - 0.5) * 4} ${endY} ${z + (Math.random() - 0.5) * 4}`,
@@ -206,7 +188,6 @@ function createPetal() {
   }, fallDuration);
 }
 
-// --- 風のロジック ---
 function scheduleNextWind() {
   const nextWindDelay = 10000 + Math.random() * 15000;
   setTimeout(() => {
