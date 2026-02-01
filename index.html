@@ -2,19 +2,58 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Ginza Sakura Sky - Pure Petals Edition</title>
+    <title>Ginza Sakura Sky - Camera Edition</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
+      /* スタート画面のオーバーレイ */
       #overlay {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.6); display: flex; justify-content: center;
         align-items: center; z-index: 9999; color: white; flex-direction: column;
         font-family: sans-serif;
       }
-      button {
+      #start-btn {
         padding: 15px 35px; font-size: 18px; background: #FFB6C1;
         border: none; border-radius: 30px; cursor: pointer; color: #444; font-weight: bold;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      }
+
+      /* iPhone風シャッターボタンのレイアウト */
+      #shutter-wrapper {
+        position: absolute;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: none; /* 初期は非表示 */
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        transition: opacity 0.3s;
+      }
+
+      #shutter-btn {
+        width: 76px;
+        height: 76px;
+        background-color: rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 4px solid white;
+        cursor: pointer;
+      }
+
+      #shutter-btn-inner {
+        width: 60px;
+        height: 60px;
+        background-color: white;
+        border-radius: 50%;
+        transition: transform 0.1s;
+      }
+
+      #shutter-btn:active #shutter-btn-inner {
+        transform: scale(0.9);
       }
     </style>
   </head>
@@ -23,6 +62,12 @@
     <div id="overlay">
       <h2 style="margin-bottom: 20px;">銀座の空に桜を広げます</h2>
       <button id="start-btn">ARを開始する</button>
+    </div>
+
+    <div id="shutter-wrapper">
+      <div id="shutter-btn">
+        <div id="shutter-btn-inner"></div>
+      </div>
     </div>
 
     <a-scene id="scene" embedded vr-mode-ui="enabled: false" 
@@ -46,121 +91,157 @@
     </a-scene>
 
     <script>
-const sceneEl = document.querySelector('#scene');
-const startBtn = document.querySelector('#start-btn');
-const overlay = document.querySelector('#overlay');
+      const sceneEl = document.querySelector('#scene');
+      const startBtn = document.querySelector('#start-btn');
+      const overlay = document.querySelector('#overlay');
+      const shutterWrapper = document.querySelector('#shutter-wrapper');
 
-const MAX_PETALS = 400; 
-let petals = [];
+      const MAX_PETALS = 400; 
+      let petals = [];
 
-startBtn.addEventListener('click', function() {
-  overlay.style.display = 'none';
-  initAR();
-});
+      // AR開始処理
+      startBtn.addEventListener('click', function() {
+        overlay.style.display = 'none';
+        shutterWrapper.style.display = 'flex';
+        initAR();
+      });
 
-function initAR() {
-  createClouds(); // Glitterなし
-  for (let i = 0; i < MAX_PETALS; i++) {
-    setTimeout(() => createPetal(), Math.random() * 20000);
-  }
-  scheduleNextWind();
-}
+      function initAR() {
+        createClouds();
+        for (let i = 0; i < MAX_PETALS; i++) {
+          setTimeout(() => createPetal(), Math.random() * 20000);
+        }
+        scheduleNextWind();
+      }
 
-function getRandomSakuraColor() {
-  const colors = ['#FFF0F5', '#FFE4E1', '#FFD1DC', '#FFC0CB', '#F8BBD0'];
-  return colors[Math.floor(Math.random() * colors.length)];
-}
+      function getRandomSakuraColor() {
+        const colors = ['#FFF0F5', '#FFE4E1', '#FFD1DC', '#FFC0CB', '#F8BBD0'];
+        return colors[Math.floor(Math.random() * colors.length)];
+      }
 
-function createClouds() {
-  const layers = [
-    { name: "遠景", radiusMin: 40, radiusMax: 90, count: 50, size: 6, opacity: 0.3, yMin: 4, yMax: 20 },
-    { name: "中景", radiusMin: 20, radiusMax: 40, count: 40, size: 8, opacity: 0.5, yMin: 4, yMax: 15 },
-    { name: "近景", radiusMin: 5, radiusMax: 18, count: 20, size: 16, opacity: 0.7, yMin: 4, yMax: 12 }
-  ];
+      // 雲の生成ロジック（軽量版レイヤー）
+      function createClouds() {
+        const layers = [
+          { name: "遠景", radiusMin: 40, radiusMax: 90, count: 50, size: 6, opacity: 0.3, yMin: 4, yMax: 20 },
+          { name: "中景", radiusMin: 20, radiusMax: 40, count: 40, size: 8, opacity: 0.5, yMin: 4, yMax: 15 },
+          { name: "近景", radiusMin: 5, radiusMax: 18, count: 20, size: 16, opacity: 0.7, yMin: 4, yMax: 12 }
+        ];
 
-  layers.forEach(layer => {
-    for (let i = 0; i < layer.count; i++) createCloudEntity(layer);
-  });
-}
+        layers.forEach(layer => {
+          for (let i = 0; i < layer.count; i++) createCloudEntity(layer);
+        });
+      }
 
-function createCloudEntity(layer) {
-  const cloud = document.createElement('a-entity');
-  cloud.setAttribute('mixin', 'cloud-mixin');
-  const angle = Math.random() * Math.PI * 2;
-  const radius = layer.radiusMin + Math.random() * (layer.radiusMax - layer.radiusMin);
-  const x = Math.cos(angle) * radius;
-  const z = Math.sin(angle) * radius;
-  const y = layer.yMin + Math.random() * (layer.yMax - layer.yMin);
-  
-  cloud.setAttribute('position', `${x} ${y} ${z}`);
-  const rotationY = (angle * 180 / Math.PI) * -1 + 90;
-  cloud.setAttribute('rotation', `-10 ${rotationY} 0`);
-  cloud.setAttribute('material', `color: ${getRandomSakuraColor()}; opacity: ${layer.opacity}`);
-  cloud.setAttribute('geometry', `primitive: plane; width: ${layer.size}; height: ${layer.size * 0.7}`);
-  sceneEl.appendChild(cloud);
-}
+      function createCloudEntity(layer) {
+        const cloud = document.createElement('a-entity');
+        cloud.setAttribute('mixin', 'cloud-mixin');
+        const angle = Math.random() * Math.PI * 2;
+        const radius = layer.radiusMin + Math.random() * (layer.radiusMax - layer.radiusMin);
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        const y = layer.yMin + Math.random() * (layer.yMax - layer.yMin);
+        
+        cloud.setAttribute('position', `${x} ${y} ${z}`);
+        const rotationY = (angle * 180 / Math.PI) * -1 + 90;
+        cloud.setAttribute('rotation', `-10 ${rotationY} 0`);
+        cloud.setAttribute('material', `color: ${getRandomSakuraColor()}; opacity: ${layer.opacity}`);
+        cloud.setAttribute('geometry', `primitive: plane; width: ${layer.size}; height: ${layer.size * 0.7}`);
+        sceneEl.appendChild(cloud);
+      }
 
-function createPetal() {
-  const petal = document.createElement('a-entity');
-  petal.setAttribute('mixin', 'petal');
-  const angle = Math.random() * Math.PI * 2;
-  const radius = 2 + Math.random() * 16;
-  const x = Math.cos(angle) * radius;
-  const z = Math.sin(angle) * radius;
-  const startY = 8 + Math.random() * 5;
-  const endY = -10;
-  
-  petal.setAttribute('position', `${x} ${startY} ${z}`);
-  petal.setAttribute('material', `color: ${getRandomSakuraColor()}; opacity: 0.95;`);
-  
-  const fallDuration = 12000 + Math.random() * 8000;
-  petal.setAttribute('animation__fall', {
-    property: 'position',
-    to: `${x + (Math.random() - 0.5) * 4} ${endY} ${z + (Math.random() - 0.5) * 4}`,
-    dur: fallDuration,
-    easing: 'linear'
-  });
-  
-  petal.setAttribute('animation__rotate', {
-    property: 'rotation',
-    to: `${Math.random() * 360} ${Math.random() * 720} ${Math.random() * 360}`,
-    dur: 5000 + Math.random() * 3000,
-    loop: true
-  });
-  
-  sceneEl.appendChild(petal);
-  petals.push(petal);
-  
-  setTimeout(() => {
-    if (petal.parentNode) {
-      petal.parentNode.removeChild(petal);
-      petals = petals.filter(p => p !== petal);
-      createPetal();
-    }
-  }, fallDuration);
-}
+      // 花びらの生成ロジック
+      function createPetal() {
+        const petal = document.createElement('a-entity');
+        petal.setAttribute('mixin', 'petal');
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 2 + Math.random() * 16;
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        const startY = 8 + Math.random() * 5;
+        const endY = -10;
+        
+        petal.setAttribute('position', `${x} ${startY} ${z}`);
+        petal.setAttribute('material', `color: ${getRandomSakuraColor()}; opacity: 0.95;`);
+        
+        const fallDuration = 12000 + Math.random() * 8000;
+        petal.setAttribute('animation__fall', {
+          property: 'position',
+          to: `${x + (Math.random() - 0.5) * 4} ${endY} ${z + (Math.random() - 0.5) * 4}`,
+          dur: fallDuration,
+          easing: 'linear'
+        });
+        
+        petal.setAttribute('animation__rotate', {
+          property: 'rotation',
+          to: `${Math.random() * 360} ${Math.random() * 720} ${Math.random() * 360}`,
+          dur: 5000 + Math.random() * 3000,
+          loop: true
+        });
+        
+        sceneEl.appendChild(petal);
+        petals.push(petal);
+        
+        setTimeout(() => {
+          if (petal.parentNode) {
+            petal.parentNode.removeChild(petal);
+            petals = petals.filter(p => p !== petal);
+            createPetal();
+          }
+        }, fallDuration);
+      }
 
-function scheduleNextWind() {
-  setTimeout(() => {
-    blowWind();
-    scheduleNextWind();
-  }, 15000 + Math.random() * 10000);
-}
+      function scheduleNextWind() {
+        setTimeout(() => {
+          blowWind();
+          scheduleNextWind();
+        }, 15000 + Math.random() * 10000);
+      }
 
-function blowWind() {
-  const windStrength = 15;
-  const windAngle = Math.random() * Math.PI * 2;
-  const windX = Math.cos(windAngle) * windStrength;
-  const windZ = Math.sin(windAngle) * windStrength;
-  petals.forEach(petal => {
-    const currentPos = petal.getAttribute('position');
-    petal.setAttribute('animation__fall', {
-      to: `${currentPos.x + windX} -10 ${currentPos.z + windZ}`,
-      dur: 7000,
-      easing: 'easeOutQuad'
-    });
-  });
-}
+      function blowWind() {
+        const windStrength = 15;
+        const windAngle = Math.random() * Math.PI * 2;
+        const windX = Math.cos(windAngle) * windStrength;
+        const windZ = Math.sin(windAngle) * windStrength;
+        petals.forEach(petal => {
+          const currentPos = petal.getAttribute('position');
+          petal.setAttribute('animation__fall', {
+            to: `${currentPos.x + windX} -10 ${currentPos.z + windZ}`,
+            dur: 7000,
+            easing: 'easeOutQuad'
+          });
+        });
+      }
+
+      // シャッターボタンの動作：UIを一時的に隠して撮影を補助
+      document.querySelector('#shutter-btn').addEventListener('click', function() {
+        // UIをフェードアウト
+        shutterWrapper.style.opacity = '0';
+        
+        // フラッシュ演出
+        const flash = document.createElement('div');
+        flash.style.position = 'fixed';
+        flash.style.top = '0';
+        flash.style.left = '0';
+        flash.style.width = '100vw';
+        flash.style.height = '100vh';
+        flash.style.backgroundColor = 'white';
+        flash.style.zIndex = '10001';
+        flash.style.pointerEvents = 'none';
+        document.body.appendChild(flash);
+
+        setTimeout(() => {
+          flash.style.transition = 'opacity 0.4s';
+          flash.style.opacity = '0';
+        }, 50);
+
+        setTimeout(() => {
+          document.body.removeChild(flash);
+          // 2秒後にボタンを再表示
+          setTimeout(() => {
+            shutterWrapper.style.opacity = '1';
+          }, 2000);
+        }, 500);
+      });
     </script>
   </body>
 </html>
