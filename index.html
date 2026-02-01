@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Ginza Sakura Sky - Unified Color Version</title>
+    <title>Ginza Sakura Sky - Glitter Edition</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
@@ -22,7 +22,7 @@
   <body style="margin: 0; overflow: hidden;">
     
     <div id="overlay">
-      <h2 style="margin-bottom: 20px;">銀座の空に桜を広げます</h2>
+      <h2 style="margin-bottom: 20px;">銀座の空に桜と光を広げます</h2>
       <button id="start-btn">ARを開始する</button>
     </div>
 
@@ -32,6 +32,8 @@
       <a-assets>
         <img id="sakura-white-img" src="img/sakuraWhite.png">
         <img id="cloud-img" src="img/cloud.png">
+        <img id="glitter-img" src="img/glitter1.png">
+        <img id="ring-img" src="img/ring3.png">
         
         <a-mixin id="petal" 
                   geometry="primitive: plane; width: 0.15; height: 0.15" 
@@ -40,6 +42,11 @@
 
         <a-mixin id="cloud-mixin"
                   material="src: #cloud-img; transparent: true; alphaTest: 0.01; side: double; shader: flat; depthTest: false;">
+        </a-mixin>
+
+        <a-mixin id="glitter-mixin"
+                  geometry="primitive: plane; width: 1; height: 1" 
+                  material="transparent: true; shader: flat; side: double; depthTest: false; blending: additive;">
         </a-mixin>
       </a-assets>
 
@@ -60,70 +67,111 @@ startBtn.addEventListener('click', function() {
 });
 
 function initAR() {
-  createClouds();
+  createCloudsAndGlitters();
   for (let i = 0; i < MAX_PETALS; i++) {
     setTimeout(() => createPetal(), Math.random() * 15000);
   }
   scheduleNextWind();
 }
 
-// --- 共通の桜色ロジック（白画像ベースに最適化） ---
 function getRandomSakuraColor() {
-  const colors = [
-    '#FFF0F5', // LavenderBlush (ごく薄い)
-    '#FFE4E1', // MistyRose (暖かみ)
-    '#FFD1DC', // Cherry Blossom Pink (王道)
-    '#FFC0CB', // Pink (しっかりめ)
-    '#F8BBD0'  // 影用
-  ];
+  const colors = ['#FFF0F5', '#FFE4E1', '#FFD1DC', '#FFC0CB', '#F8BBD0'];
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-function createClouds() {
+// 雲と光の粒を生成
+function createCloudsAndGlitters() {
   const layers = [
-    { name: "遠景", radiusMin: 50, radiusMax: 80, count: 150, size: 6, opacity: 0.3, yMin: 15, yMax: 35 },
-    { name: "中景", radiusMin: 25, radiusMax: 35, count: 60, size: 8, opacity: 0.5, yMin: 12, yMax: 25 },
-    { name: "近景", radiusMin: 8, radiusMax: 15, count: 15, size: 16, opacity: 0.7, yMin: 5, yMax: 15 }
+    { name: "遠景", radiusMin: 50, radiusMax: 80, count: 150, size: 6, opacity: 0.3, yMin: 15, yMax: 35, glitterCount: 40 },
+    { name: "中景", radiusMin: 25, radiusMax: 35, count: 60, size: 8, opacity: 0.5, yMin: 12, yMax: 25, glitterCount: 20 },
+    { name: "近景", radiusMin: 8, radiusMax: 15, count: 15, size: 16, opacity: 0.7, yMin: 5, yMax: 15, glitterCount: 10 }
   ];
 
   layers.forEach(layer => {
+    // 桜の雲の生成
     for (let i = 0; i < layer.count; i++) {
-      const cloud = document.createElement('a-entity');
-      cloud.setAttribute('mixin', 'cloud-mixin');
-      const angle = Math.random() * Math.PI * 2;
-      const radius = layer.radiusMin + Math.random() * (layer.radiusMax - layer.radiusMin);
-      const x = Math.cos(angle) * radius;
-      const z = Math.sin(angle) * radius;
-      const y = layer.yMin + Math.random() * (layer.yMax - layer.yMin);
-      cloud.setAttribute('position', `${x} ${y} ${z}`);
-      const rotationY = (angle * 180 / Math.PI) * -1 + 90;
-      cloud.setAttribute('rotation', `-10 ${rotationY} 0`);
-
-      const color = getRandomSakuraColor();
-      cloud.setAttribute('geometry', `primitive: plane; width: ${layer.size}; height: ${layer.size * 0.7}`);
-      cloud.setAttribute('material', `color: ${color}; opacity: ${layer.opacity}`);
-      sceneEl.appendChild(cloud);
+      createCloudEntity(layer);
+    }
+    // 光の粒（グリッター）の生成
+    for (let j = 0; j < layer.glitterCount; j++) {
+      createGlitterEntity(layer);
     }
   });
+}
+
+function createCloudEntity(layer) {
+  const cloud = document.createElement('a-entity');
+  cloud.setAttribute('mixin', 'cloud-mixin');
+  const angle = Math.random() * Math.PI * 2;
+  const radius = layer.radiusMin + Math.random() * (layer.radiusMax - layer.radiusMin);
+  const x = Math.cos(angle) * radius;
+  const z = Math.sin(angle) * radius;
+  const y = layer.yMin + Math.random() * (layer.yMax - layer.yMin);
+
+  cloud.setAttribute('position', `${x} ${y} ${z}`);
+  const rotationY = (angle * 180 / Math.PI) * -1 + 90;
+  cloud.setAttribute('rotation', `-10 ${rotationY} 0`);
+  cloud.setAttribute('material', `color: ${getRandomSakuraColor()}; opacity: ${layer.opacity}`);
+  cloud.setAttribute('geometry', `primitive: plane; width: ${layer.size}; height: ${layer.size * 0.7}`);
+  sceneEl.appendChild(cloud);
+}
+
+// --- 光の粒（グリッター）を生成する関数 ---
+function createGlitterEntity(layer) {
+  const glitter = document.createElement('a-entity');
+  glitter.setAttribute('mixin', 'glitter-mixin');
+  
+  // 雲と同じ範囲に配置
+  const angle = Math.random() * Math.PI * 2;
+  const radius = layer.radiusMin + Math.random() * (layer.radiusMax - layer.radiusMin);
+  const x = Math.cos(angle) * radius;
+  const z = Math.sin(angle) * radius;
+  const y = layer.yMin + Math.random() * (layer.yMax - layer.yMin);
+  glitter.setAttribute('position', `${x} ${y} ${z}`);
+
+  // 画像をランダムに選択
+  const src = Math.random() > 0.5 ? '#glitter-img' : '#ring-img';
+  // サイズをレイヤーに合わせて調整（雲よりは小さく）
+  const size = (layer.size * 0.2) + (Math.random() * 2);
+  
+  glitter.setAttribute('material', `src: ${src}; color: #FFFFFF; opacity: 0`);
+  glitter.setAttribute('geometry', `primitive: plane; width: ${size}; height: ${size}`);
+
+  // ランダムなタイミングでチカチカさせるアニメーション
+  const duration = 1000 + Math.random() * 2000;
+  const delay = Math.random() * 5000;
+
+  glitter.setAttribute('animation__flicker', {
+    property: 'material.opacity',
+    from: 0,
+    to: 0.8,
+    dur: duration,
+    delay: delay,
+    dir: 'alternate',
+    loop: true,
+    easing: 'easeInOutSine'
+  });
+
+  // 常にカメラを向かせる
+  glitter.setAttribute('look-at', '[camera]');
+  // もしlook-atコンポーネントがない場合用の簡易回転（ユーザー方向）
+  const rotationY = (angle * 180 / Math.PI) * -1 + 90;
+  glitter.setAttribute('rotation', `0 ${rotationY} 0`);
+
+  sceneEl.appendChild(glitter);
 }
 
 function createPetal() {
   const petal = document.createElement('a-entity');
   petal.setAttribute('mixin', 'petal');
-  
   const angle = Math.random() * Math.PI * 2;
   const radius = 2 + Math.random() * 16;
   const x = Math.cos(angle) * radius;
   const z = Math.sin(angle) * radius;
   const startY = 8 + Math.random() * 5;
   const endY = -10;
-
   petal.setAttribute('position', `${x} ${startY} ${z}`);
-
-  // --- 花びらも雲と同じロジックの色を適用 ---
-  // 画像が白くなったので、これで雲と同じ淡い色が再現されます
-  const color = getRandomSakuraColor();
-  petal.setAttribute('material', `color: ${color}; opacity: 0.9;`);
+  petal.setAttribute('material', `color: ${getRandomSakuraColor()}; opacity: 0.95;`);
   
   const fallDuration = 10000 + Math.random() * 10000;
   petal.setAttribute('animation__fall', {
@@ -132,17 +180,14 @@ function createPetal() {
     dur: fallDuration,
     easing: 'linear'
   });
-
   petal.setAttribute('animation__rotate', {
     property: 'rotation',
     to: `${Math.random() * 360} ${Math.random() * 720} ${Math.random() * 360}`,
     dur: 4000 + Math.random() * 3000,
     loop: true
   });
-
   sceneEl.appendChild(petal);
   petals.push(petal);
-
   setTimeout(() => {
     if (petal.parentNode) {
       petal.parentNode.removeChild(petal);
@@ -156,7 +201,7 @@ function scheduleNextWind() {
   setTimeout(() => {
     blowWind();
     scheduleNextWind();
-  }, 10000 + Math.random() * 15000);
+  }, 12000 + Math.random() * 10000);
 }
 
 function blowWind() {
@@ -168,7 +213,7 @@ function blowWind() {
     const currentPos = petal.getAttribute('position');
     petal.setAttribute('animation__fall', {
       to: `${currentPos.x + windX} -10 ${currentPos.z + windZ}`,
-      dur: 5000,
+      dur: 6000,
       easing: 'easeOutQuad'
     });
   });
