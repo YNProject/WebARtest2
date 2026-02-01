@@ -93,11 +93,12 @@ function getRandomSakuraColor() {
 
 // --- 花びら（ピンク画像ベース）用の色ロジック ---
 function getPetalColor() {
+  // 元のピンクを打ち消すために、あえて「青み」や「白」を強くぶつけます
   const colors = [
-    '#FFFFFF', // そのままの色
-    '#FFFAFA', // Snow (明るさを足す)
-    '#FFF0F5', // LavenderBlush (ごく薄い色)
-    '#F5F5F5'  // WhiteSmoke (少し彩度を下げる)
+    '#FFFFFF', // 白（基本）
+    '#E0FFFF', // ライトシアン（ピンクの赤みを中和して白っぽく見せる）
+    '#F0FFFF', // アジュール（青白い白）
+    '#FFF5EE'  // シェルホワイト
   ];
   return colors[Math.floor(Math.random() * colors.length)];
 }
@@ -158,7 +159,7 @@ function createPetal() {
 
   // 花びら専用の色設定（元画像がピンクなので白系を乗せる）
   const color = getPetalColor();
-  petal.setAttribute('material', `color: ${color};`);
+ petal.setAttribute('material', `color: ${color}; opacity: 0.4; transparent: true;`);
   
   const fallDuration = 10000 + Math.random() * 10000;
   petal.setAttribute('animation__fall', {
