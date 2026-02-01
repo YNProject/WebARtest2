@@ -94,16 +94,16 @@ function createClouds() {
   ];
 
   // ピンク〜白のランダムな色を生成する関数
-  function getRandomSakuraColor() {
-    const colors = [
-      '#FFFFFF', // 白
-      '#FFF0F5', // ラベンダーピンク（ごく薄い）
-      '#FFB6C1', // ライトピンク
-      '#FFC0CB', // ピンク
-      '#FFB7C5'  // 桜色
-    ];
-    return colors[Math.floor(Math.random() * colors.length)];
-  }
+ function getRandomSakuraColor() {
+  // H (色相): 340〜355 あたりが桜色
+  const h = 340 + Math.random() * 15;
+  // S (彩度): ここを下げると「ピンクすぎ」を防げます (30%〜60%くらいが上品)
+  const s = 30 + Math.random() * 30;
+  // L (輝度): ここを上げると「白っぽく」なります (85%〜95%くらい)
+  const l = 85 + Math.random() * 10;
+  
+  return `hsl(${h}, ${s}%, ${l}%)`;
+}
 
   layers.forEach(layer => {
     for (let i = 0; i < layer.count; i++) {
