@@ -87,9 +87,10 @@ function initAR() {
 // --- 桜色を計算で生成（白飛び防止・ランダム性重視） ---
 function getRandomSakuraColor() {
   const colors = [
-    '#FF00FF', // マゼンタ（絶対ピンクに見えるはずの色）
-    '#FF1493', // ディープピンク
-    '#C71585'  // ミディアムバイオレットレッド（影用）
+    '#FFB6C1', // ライトピンク（これが出るかチェック）
+    '#FF69B4', // ホットピンク（これくらいがARでは映える）
+    '#EE82EE', // バイオレット（奥行きが出る）
+    '#F08080'  // ライトコーラル（少し暖かみ）
   ];
   return colors[Math.floor(Math.random() * colors.length)];
 }
@@ -100,19 +101,19 @@ function createClouds() {
     { 
       name: "遠景", 
       radiusMin: 50, radiusMax: 80, 
-      count: 80, size: 5, opacity: 0.4, 
+      count: 80, size: 5, opacity: 0.3, 
       yMin: 15, yMax: 35 
     },
     { 
       name: "中景", 
       radiusMin: 25, radiusMax: 35, 
-      count: 30, size: 10, opacity: 0.7, 
+      count: 30, size: 10, opacity: 0.5, 
       yMin: 12, yMax: 25 
     },
     { 
       name: "近景", 
       radiusMin: 8, radiusMax: 15, 
-      count: 8, size: 20, opacity: 0.9, 
+      count: 8, size: 20, opacity: 0.7, 
       yMin: 5, yMax: 15 
     }
   ];
