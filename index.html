@@ -213,35 +213,65 @@
       }
 
       // シャッターボタンの動作：UIを一時的に隠して撮影を補助
-      document.querySelector('#shutter-btn').addEventListener('click', function() {
-        // UIをフェードアウト
-        shutterWrapper.style.opacity = '0';
-        
-        // フラッシュ演出
-        const flash = document.createElement('div');
-        flash.style.position = 'fixed';
-        flash.style.top = '0';
-        flash.style.left = '0';
-        flash.style.width = '100vw';
-        flash.style.height = '100vh';
-        flash.style.backgroundColor = 'white';
-        flash.style.zIndex = '10001';
-        flash.style.pointerEvents = 'none';
-        document.body.appendChild(flash);
+document.querySelector('#shutter-btn').addEventListener('click', function() {
+  const scene = document.querySelector('a-scene');
+  // 1. A-Frame（桜部分）のCanvasを取得
+  const aframeCanvas = scene.canvas;
+  // 2. 背後のカメラ映像を取得
+  const video = document.querySelector('video');
 
-        setTimeout(() => {
-          flash.style.transition = 'opacity 0.4s';
-          flash.style.opacity = '0';
-        }, 50);
+  // 3. 合成用のCanvasを作成
+  const canvas = document.createElement('canvas');
+  canvas.width = aframeCanvas.width;
+  canvas.height = aframeCanvas.height;
+  const ctx = canvas.getContext('2d');
 
-        setTimeout(() => {
-          document.body.removeChild(flash);
-          // 2秒後にボタンを再表示
-          setTimeout(() => {
-            shutterWrapper.style.opacity = '1';
-          }, 2000);
-        }, 500);
-      });
+  // 4. 背後の映像を描画（左右反転などの補正が必要な場合もあります）
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  // 5. その上に桜を描画
+  ctx.drawImage(aframeCanvas, 0, 0, canvas.width, canvas.height);
+
+  // 6. 画像として書き出し
+  try {
+    const dataURL = canvas.toDataURL('image/png');
+    
+    // ダウンロード用のリンクを作成
+    const link = document.createElement('a');
+    link.download = `ginza-sakura-${Date.now()}.png`;
+    link.href = dataURL;
+    
+    // iOS/Android向けに、共有メニューや画像保存を促す
+    if (navigator.share) {
+      // 共有機能がある場合（スマホの標準共有）
+      fetch(dataURL)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], 'sakura.png', { type: 'image/png' });
+          navigator.share({
+            files: [file],
+            title: '銀座の桜',
+            text: '銀座の空に桜を咲かせました！'
+          }).catch(console.error);
+        });
+    } else {
+      // 共有機能がない場合は直接ダウンロード
+      link.click();
+    }
+  } catch (err) {
+    console.error("画像の生成に失敗しました。カメラのクロスドメイン制限の可能性があります。", err);
+    alert("このブラウザでは直接保存ができないため、通常のスクリーンショットをご利用ください。");
+  }
+
+  // フラッシュ演出（視覚的なフィードバック）
+  const flash = document.createElement('div');
+  flash.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:white;z-index:10001;pointer-events:none;';
+  document.body.appendChild(flash);
+  setTimeout(() => {
+    flash.style.transition = 'opacity 0.4s';
+    flash.style.opacity = '0';
+    setTimeout(() => document.body.removeChild(flash), 400);
+  }, 50);
+});
     </script>
   </body>
 </html>
