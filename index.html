@@ -85,37 +85,43 @@ function initAR() {
   scheduleNextWind();
 }
 
-// --- 雲（遠くの桜の塊）の生成関数 ---
+// --- 雲（遠くの桜の塊）の生成関数：広範囲バージョン ---
 function createClouds() {
-  for (let i = 0; i < CLOUD_COUNT; i++) {
+  const TOTAL_CLOUDS = 25; // 密度を上げるために少し数を増やします
+
+  for (let i = 0; i < TOTAL_CLOUDS; i++) {
     const cloud = document.createElement('a-entity');
     cloud.setAttribute('mixin', 'cloud-mixin');
 
-    // 自分から5m〜15m離れた位置にランダムに配置
+    // --- 配置ロジックの変更 ---
+    // 半径5mから30mの間でランダムに散らす（かなり広くなります）
     const angle = Math.random() * Math.PI * 2;
-    const radius = 5 + Math.random() * 10; // 5m以内には配置しない
+    const radius = 5 + Math.random() * 25; 
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
     
-    // 高さは少し控えめ（10m〜15m）にすると、遠くに見えやすくなります
-    const y = 10 + Math.random() * 5;
+    // 高さも5mから20mの間でランダムにし、遠近感を出す
+    const y = 5 + Math.random() * 15;
 
     cloud.setAttribute('position', `${x} ${y} ${z}`);
     
-    // 雲が中心（自分）を向くように回転を調整
-    // look-atを使わず、ラジアンから計算して自分の方へ少し傾ける
-    const rotationY = (angle * 180 / Math.PI) * -1 + 90;
-    cloud.setAttribute('rotation', `-60 ${rotationY} 0`); // -60度で少し自分の方へ傾ける
+    // --- 向きの調整 ---
+    // 各パーツがバラバラな方向を向いている方が自然なので、回転をランダムに
+    // 完全に水平だと真下からしか見えないため、少し傾ける（-45度〜-90度）
+    const tilt = -45 - Math.random() * 45;
+    const roll = Math.random() * 360;
+    cloud.setAttribute('rotation', `${tilt} ${roll} 0`);
 
-    // サイズにバラつきを出す
-    const scale = 1.0 + Math.random() * 2.0;
+    // --- サイズのランダム化 ---
+    // 遠くのものは大きく、近くのものは小さくなど、個体差を出す
+    const scale = 1.5 + Math.random() * 3.0;
     cloud.setAttribute('scale', `${scale} ${scale} 1`);
 
-    // ゆっくりとその場で漂わせる
+    // ゆっくりと浮遊させるアニメーション
     cloud.setAttribute('animation', {
       property: 'position',
-      to: `${x + (Math.random() - 0.5) * 3} ${y + (Math.random() - 0.5) * 2} ${z + (Math.random() - 0.5) * 3}`,
-      dur: 15000 + Math.random() * 15000,
+      to: `${x + (Math.random() - 0.5) * 10} ${y + (Math.random() - 0.5) * 5} ${z + (Math.random() - 0.5) * 10}`,
+      dur: 20000 + Math.random() * 20000,
       dir: 'alternate',
       loop: true,
       easing: 'easeInOutSine'
