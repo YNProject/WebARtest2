@@ -171,6 +171,11 @@ function createPetal() {
   const endY = -10;
 
   petal.setAttribute('position', `${x} ${startY} ${z}`);
+
+  // --- 花びらにもランダムな桜色を適用 ---
+  const color = getRandomSakuraColor();
+  // mixinのmaterialを上書き（色を乗せる）
+  petal.setAttribute('material', `color: ${color};`);
   
   const fallDuration = 10000 + Math.random() * 10000;
 
