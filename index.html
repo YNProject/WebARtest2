@@ -87,41 +87,40 @@ function initAR() {
 
 // --- 雲（遠くの桜の塊）の生成関数：広範囲バージョン ---
 function createClouds() {
-  const TOTAL_CLOUDS = 25; // 密度を上げるために少し数を増やします
+  const TOTAL_CLOUDS = 40; // 遠くに配置するので少し数を増やして密度を出します
 
   for (let i = 0; i < TOTAL_CLOUDS; i++) {
     const cloud = document.createElement('a-entity');
     cloud.setAttribute('mixin', 'cloud-mixin');
 
-    // --- 配置ロジックの変更 ---
-    // 半径5mから30mの間でランダムに散らす（かなり広くなります）
+    // --- 30m付近の円周上に配置 ---
     const angle = Math.random() * Math.PI * 2;
-    const radius = 5 + Math.random() * 25; 
+    // 半径を25m〜35mの間に限定して、自分から遠ざけます
+    const radius = 25 + Math.random() * 10; 
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
     
-    // 高さも5mから20mの間でランダムにし、遠近感を出す
-    const y = 5 + Math.random() * 15;
+    // 高さは目線より上（5m〜15m）に設定
+    const y = 5 + Math.random() * 10;
 
     cloud.setAttribute('position', `${x} ${y} ${z}`);
     
-    // --- 向きの調整 ---
-    // 各パーツがバラバラな方向を向いている方が自然なので、回転をランダムに
-    // 完全に水平だと真下からしか見えないため、少し傾ける（-45度〜-90度）
-    const tilt = -45 - Math.random() * 45;
-    const roll = Math.random() * 360;
-    cloud.setAttribute('rotation', `${tilt} ${roll} 0`);
+    // --- 常に中心（カメラ）を向かせる設定 ---
+    // A-Frameのlook-atコンポーネントを使わなくても、数学的に計算して
+    // 常に自分の方向を向く（垂直にならない）ようにします
+    const rotationY = (angle * 180 / Math.PI) * -1 + 90;
+    // -20度ほど少し自分の方へ倒すことで、見上げた時の「板っぽさ」を消します
+    cloud.setAttribute('rotation', `-20 ${rotationY} 0`);
 
-    // --- サイズのランダム化 ---
-    // 遠くのものは大きく、近くのものは小さくなど、個体差を出す
-    const scale = 1.5 + Math.random() * 3.0;
+    // 遠くにあるので、サイズはかなり大きくします
+    const scale = 5.0 + Math.random() * 5.0; 
     cloud.setAttribute('scale', `${scale} ${scale} 1`);
 
-    // ゆっくりと浮遊させるアニメーション
+    // わずかに揺れるようなアニメーション
     cloud.setAttribute('animation', {
       property: 'position',
-      to: `${x + (Math.random() - 0.5) * 10} ${y + (Math.random() - 0.5) * 5} ${z + (Math.random() - 0.5) * 10}`,
-      dur: 20000 + Math.random() * 20000,
+      to: `${x} ${y + (Math.random() - 0.5) * 3} ${z}`,
+      dur: 10000 + Math.random() * 10000,
       dir: 'alternate',
       loop: true,
       easing: 'easeInOutSine'
