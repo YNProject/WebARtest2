@@ -46,10 +46,19 @@
       <a-assets>
         <img id="sakura-white-img" src="img/sakuraWhite.png">
         <img id="cloud-img" src="img/cloud.png">
+        <a-asset-item id="sakura-tree-model" src="model/sakura.glb"></a-asset-item>
+
         <a-mixin id="petal" geometry="primitive: plane; width: 0.15; height: 0.15" 
                   material="src: #sakura-white-img; transparent: true; alphaTest: 0.8; side: double; shader: flat"></a-mixin>
         <a-mixin id="cloud-mixin" material="src: #cloud-img; transparent: true; alphaTest: 0.1; side: double; shader: flat; depthTest: false;"></a-mixin>
       </a-assets>
+
+      <a-entity id="sakura-tree" 
+                gltf-model="#sakura-tree-model" 
+                position="0 0 -5" 
+                scale="1 1 1"
+                visible="false">
+      </a-entity>
 
       <a-entity camera look-controls="enabled: true" far="1000"></a-entity>
     </a-scene>
@@ -59,14 +68,16 @@
       const startBtn = document.querySelector('#start-btn');
       const overlay = document.querySelector('#overlay');
       const shutterWrapper = document.querySelector('#shutter-wrapper');
+      const sakuraTree = document.querySelector('#sakura-tree');
 
-      // --- 桜の生成・風ロジック ---
       const MAX_PETALS = 400; 
       let petals = [];
 
       startBtn.addEventListener('click', function() {
         overlay.style.display = 'none';
         shutterWrapper.style.display = 'flex';
+        // AR開始時に木を表示
+        sakuraTree.setAttribute('visible', 'true');
         initAR();
       });
 
@@ -78,7 +89,7 @@
 
       function getRandomSakuraColor() {
         const colors = ['#FFF0F5', '#FFE4E1', '#FFD1DC', '#FFC0CB', '#F8BBD0'];
-        return colors[Math.floor(Math.random() * colors.length)];
+        return colors[0]; // 3Dモデルに合わせてまずは標準色に固定
       }
 
       function createClouds() {
@@ -95,7 +106,7 @@
             const radius = layer.radiusMin + Math.random() * (layer.radiusMax - layer.radiusMin);
             cloud.setAttribute('position', `${Math.cos(angle) * radius} ${layer.yMin + Math.random() * (layer.yMax - layer.yMin)} ${Math.sin(angle) * radius}`);
             cloud.setAttribute('rotation', `-10 ${(angle * 180 / Math.PI) * -1 + 90} 0`);
-            cloud.setAttribute('material', `color: ${getRandomSakuraColor()}; opacity: ${layer.opacity}`);
+            cloud.setAttribute('material', `color: #FFD1DC; opacity: ${layer.opacity}`);
             cloud.setAttribute('geometry', `primitive: plane; width: ${layer.size}; height: ${layer.size * 0.7}`);
             sceneEl.appendChild(cloud);
           }
@@ -109,7 +120,7 @@
         const radius = 2 + Math.random() * 16;
         const x = Math.cos(angle) * radius; const z = Math.sin(angle) * radius;
         petal.setAttribute('position', `${x} ${8 + Math.random() * 5} ${z}`);
-        petal.setAttribute('material', `color: ${getRandomSakuraColor()}; opacity: 0.95;`);
+        petal.setAttribute('material', `color: #FFB6C1; opacity: 0.95;`);
         const dur = 12000 + Math.random() * 8000;
         petal.setAttribute('animation__fall', { property: 'position', to: `${x + (Math.random()-0.5)*4} -10 ${z + (Math.random()-0.5)*4}`, dur: dur, easing: 'linear' });
         petal.setAttribute('animation__rotate', { property: 'rotation', to: `${Math.random()*360} ${Math.random()*720} ${Math.random()*360}`, dur: 5000, loop: true });
@@ -124,11 +135,10 @@
         petals.forEach(p => { const pos = p.getAttribute('position'); p.setAttribute('animation__fall', { to: `${pos.x + windX} -10 ${pos.z + windZ}`, dur: 7000, easing: 'easeOutQuad' }); });
       }
 
-      // --- スナップショット撮影ロジック (高彩度・二重描画版) ---
+      // --- スナップショット撮影ロジック ---
       document.querySelector('#shutter-btn').addEventListener('click', function() {
         const video = document.querySelector('video');
         const aSceneCanvas = sceneEl.components.screenshot.getCanvas('perspective');
-        
         const width = video.videoWidth;
         const height = video.videoHeight;
         
@@ -137,23 +147,16 @@
         finalCanvas.height = height;
         const ctx = finalCanvas.getContext("2d");
 
-        // 1. 実写映像をそのまま描画
         ctx.drawImage(video, 0, 0, width, height);
-
-        // 2. 桜の透明度が負けないよう「重ね塗り」設定を適用
         ctx.globalCompositeOperation = 'source-over';
-        
-        // 3. 桜を描画（発色を良くするために2回重ねて描画）
         ctx.drawImage(aSceneCanvas, 0, 0, width, height);
-        ctx.drawImage(aSceneCanvas, 0, 0, width, height);
+        ctx.drawImage(aSceneCanvas, 0, 0, width, height); // 桜の発色強調
 
-        // 4. 写真として見栄えを良くするために少しだけ「彩度」と「明るさ」を盛る
-        // （画面で見ている状態は光を発しているので明るく見えますが、静止画は暗くなりがちなため）
         const tempCanvas = document.createElement("canvas");
         tempCanvas.width = width;
         tempCanvas.height = height;
         const tempCtx = tempCanvas.getContext("2d");
-        tempCtx.filter = 'saturate(1.2) brightness(1.05)'; 
+        tempCtx.filter = 'saturate(1.1) brightness(1.05)'; 
         tempCtx.drawImage(finalCanvas, 0, 0);
 
         const dataURL = tempCanvas.toDataURL('image/png');
@@ -164,11 +167,10 @@
         document.body.appendChild(flash);
         setTimeout(() => { flash.style.transition = 'opacity 0.4s'; flash.style.opacity = '0'; setTimeout(() => document.body.removeChild(flash), 400); }, 50);
 
-        // 保存・共有
         if (navigator.share) {
           fetch(dataURL).then(res => res.blob()).then(blob => {
             const file = new File([blob], 'ginza-sakura.png', { type: 'image/png' });
-            navigator.share({ files: [file], title: '銀座の桜', text: '銀座の空に桜を咲かせました！' });
+            navigator.share({ files: [file], title: '銀座の桜', text: '空に桜を咲かせました！' });
           });
         } else {
           const link = document.createElement('a');
