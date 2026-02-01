@@ -46,6 +46,7 @@
       <a-assets>
         <img id="sakura-white-img" src="img/sakuraWhite.png">
         <img id="cloud-img" src="img/cloud.png">
+        <img id="kage-img" src="img/kage.png">
         <a-asset-item id="sakura-tree-model" src="model/sakura.glb"></a-asset-item>
 
         <a-mixin id="petal" geometry="primitive: plane; width: 0.15; height: 0.15" 
@@ -53,11 +54,21 @@
         <a-mixin id="cloud-mixin" material="src: #cloud-img; transparent: true; alphaTest: 0.1; side: double; shader: flat; depthTest: false;"></a-mixin>
       </a-assets>
 
-      <a-entity id="sakura-tree" 
-                gltf-model="#sakura-tree-model" 
-                position="0 -5 -20" 
-                scale="2 2 2"
-                visible="false">
+      <a-entity id="sakura-anchor" position="0 -5 -15" visible="false">
+        
+        <a-entity id="sakura-tree" 
+                  gltf-model="#sakura-tree-model" 
+                  scale="2 2 2"
+                  position="0 0 0">
+        </a-entity>
+
+        <a-image src="#kage-img" 
+                 rotation="-90 0 0" 
+                 position="0 0.05 0" 
+                 scale="6 6 6" 
+                 transparent="true" 
+                 opacity="0.7">
+        </a-image>
       </a-entity>
 
       <a-entity camera look-controls="enabled: true" far="1000"></a-entity>
@@ -68,7 +79,7 @@
       const startBtn = document.querySelector('#start-btn');
       const overlay = document.querySelector('#overlay');
       const shutterWrapper = document.querySelector('#shutter-wrapper');
-      const sakuraTree = document.querySelector('#sakura-tree');
+      const sakuraAnchor = document.querySelector('#sakura-anchor');
 
       const MAX_PETALS = 400; 
       let petals = [];
@@ -76,8 +87,8 @@
       startBtn.addEventListener('click', function() {
         overlay.style.display = 'none';
         shutterWrapper.style.display = 'flex';
-        // AR開始時に木を表示
-        sakuraTree.setAttribute('visible', 'true');
+        // AR開始時にアンカー（木と影）を表示
+        sakuraAnchor.setAttribute('visible', 'true');
         initAR();
       });
 
@@ -85,11 +96,6 @@
         createClouds();
         for (let i = 0; i < MAX_PETALS; i++) { setTimeout(() => createPetal(), Math.random() * 20000); }
         scheduleNextWind();
-      }
-
-      function getRandomSakuraColor() {
-        const colors = ['#FFF0F5', '#FFE4E1', '#FFD1DC', '#FFC0CB', '#F8BBD0'];
-        return colors[0]; // 3Dモデルに合わせてまずは標準色に固定
       }
 
       function createClouds() {
@@ -135,7 +141,6 @@
         petals.forEach(p => { const pos = p.getAttribute('position'); p.setAttribute('animation__fall', { to: `${pos.x + windX} -10 ${pos.z + windZ}`, dur: 7000, easing: 'easeOutQuad' }); });
       }
 
-      // --- スナップショット撮影ロジック ---
       document.querySelector('#shutter-btn').addEventListener('click', function() {
         const video = document.querySelector('video');
         const aSceneCanvas = sceneEl.components.screenshot.getCanvas('perspective');
@@ -150,7 +155,7 @@
         ctx.drawImage(video, 0, 0, width, height);
         ctx.globalCompositeOperation = 'source-over';
         ctx.drawImage(aSceneCanvas, 0, 0, width, height);
-        ctx.drawImage(aSceneCanvas, 0, 0, width, height); // 桜の発色強調
+        ctx.drawImage(aSceneCanvas, 0, 0, width, height);
 
         const tempCanvas = document.createElement("canvas");
         tempCanvas.width = width;
@@ -161,7 +166,6 @@
 
         const dataURL = tempCanvas.toDataURL('image/png');
 
-        // フラッシュ演出
         const flash = document.createElement('div');
         flash.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:white;z-index:10001;pointer-events:none;';
         document.body.appendChild(flash);
