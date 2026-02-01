@@ -89,7 +89,7 @@ function getRandomSakuraColor() {
   // 色相: 340-355（ピンク）、彩度: 70-100%（強め）、輝度: 65-80%（白飛びしない程度に抑える）
   const h = 340 + Math.random() * 15;
   const s = 70 + Math.random() * 30;
-  const l = 65 + Math.random() * 15;
+  const l = 5 + Math.random() * 15;
   return `hsl(${h}, ${s}%, ${l}%)`;
 }
 
