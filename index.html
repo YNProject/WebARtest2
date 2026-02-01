@@ -140,7 +140,7 @@ function createGlitterEntity(layer) {
   glitter.setAttribute('position', `${x} ${y} ${z}`);
 
   // 粒のサイズを極小に (0.03〜0.15)
-  const size = 0.03 + Math.random() * 0.12;
+  const size = 0.1 + Math.random() * 0.2;
   glitter.setAttribute('geometry', `primitive: plane; width: ${size}; height: ${size}`);
 
   // パチパチと瞬く速度設定
