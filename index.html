@@ -87,40 +87,37 @@ function initAR() {
 
 // --- 雲（遠くの桜の塊）の生成関数：広範囲バージョン ---
 function createClouds() {
-  const TOTAL_CLOUDS = 40; // 遠くに配置するので少し数を増やして密度を出します
+  const TOTAL_CLOUDS = 35; 
 
   for (let i = 0; i < TOTAL_CLOUDS; i++) {
     const cloud = document.createElement('a-entity');
     cloud.setAttribute('mixin', 'cloud-mixin');
 
-    // --- 30m付近の円周上に配置 ---
+    // --- 50m〜80mの超遠方に配置 ---
     const angle = Math.random() * Math.PI * 2;
-    // 半径を25m〜35mの間に限定して、自分から遠ざけます
-    const radius = 25 + Math.random() * 10; 
+    const radius = 50 + Math.random() * 30; // かなり遠くへ
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
     
-    // 高さは目線より上（5m〜15m）に設定
-    const y = 5 + Math.random() * 10;
+    // 遠くの空に浮かんでいるように、高さも少し上げます（15m〜30m）
+    const y = 15 + Math.random() * 15;
 
     cloud.setAttribute('position', `${x} ${y} ${z}`);
     
-    // --- 常に中心（カメラ）を向かせる設定 ---
-    // A-Frameのlook-atコンポーネントを使わなくても、数学的に計算して
-    // 常に自分の方向を向く（垂直にならない）ようにします
+    // --- 常に自分の方を向かせる ---
     const rotationY = (angle * 180 / Math.PI) * -1 + 90;
-    // -20度ほど少し自分の方へ倒すことで、見上げた時の「板っぽさ」を消します
-    cloud.setAttribute('rotation', `-20 ${rotationY} 0`);
+    // 遠景なので、少しだけ仰角をつける（-10度）
+    cloud.setAttribute('rotation', `-10 ${rotationY} 0`);
 
-    // 遠くにあるので、サイズはかなり大きくします
-    const scale = 5.0 + Math.random() * 5.0; 
+    // 遠いのでサイズをさらに巨大化（15m〜25m級の桜の雲）
+    const scale = 1.0 + Math.random() * 1.5; 
     cloud.setAttribute('scale', `${scale} ${scale} 1`);
 
-    // わずかに揺れるようなアニメーション
+    // 遠くのものは動きをゆっくりに（ゆったりとした浮遊感）
     cloud.setAttribute('animation', {
       property: 'position',
-      to: `${x} ${y + (Math.random() - 0.5) * 3} ${z}`,
-      dur: 10000 + Math.random() * 10000,
+      to: `${x} ${y + (Math.random() - 0.5) * 5} ${z}`,
+      dur: 20000 + Math.random() * 10000,
       dir: 'alternate',
       loop: true,
       easing: 'easeInOutSine'
