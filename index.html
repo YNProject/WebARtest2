@@ -116,30 +116,37 @@
       });
 
       // 降る花びらの生成（回転アニメーション復活）
+      // 降る花びらの生成（前方限定・高さ3版）
       function createPetal() {
         if (!treePlaced) return;
         const petal = document.createElement('a-entity');
         petal.setAttribute('mixin', 'petal');
         
-        const angle = (Math.random() - 0.5) * Math.PI;
-        const radius = 1 + Math.random() * 8;
+        // --- 正面120度くらいの範囲に絞る ---
+        const angle = (Math.random() - 0.5) * (Math.PI * 0.66); 
+        const radius = 1 + Math.random() * 10; 
+        
+        // Zを「-」方向に限定することで、カメラより前方にのみ生成
         const x = Math.sin(angle) * radius;
         const z = -Math.cos(angle) * radius;
 
+        // --- ご指定の「高さ3」に設定 ---
         petal.setAttribute('position', `${x} 3 ${z}`);
+        
         petal.setAttribute('rotation', `${Math.random()*360} ${Math.random()*360} ${Math.random()*360}`);
         petal.setAttribute('material', `color: ${petalColor}; opacity: 0.8;`);
         
         const dur = 15000 + Math.random() * 10000;
         
-        // 落下
+        // 落下アニメーション
         petal.setAttribute('animation__fall', { 
             property: 'position', 
-            to: `${x + (Math.random()-0.5)*3} -5 ${z + (Math.random()-0.5)*3}`, 
+            // 落下先も少し前方に流れるように設定
+            to: `${x + (Math.random()-0.5)*3} -5 ${z - 2}`, 
             dur: dur, easing: 'linear' 
         });
 
-        // 回転（復活）
+        // 回転アニメーション
         petal.setAttribute('animation__rotate', { 
             property: 'rotation', 
             to: `${Math.random()*360 + 360} ${Math.random()*360 + 720} ${Math.random()*360 + 360}`, 
@@ -150,6 +157,7 @@
         
         sceneEl.appendChild(petal);
         petals.push(petal);
+        
         setTimeout(() => { 
           if (petal.parentNode) { 
             petal.parentNode.removeChild(petal); 
