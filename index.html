@@ -252,19 +252,56 @@
         }
       });
 
+      // 撮影＆共有（歪み補正版）
       document.querySelector('#shutter-btn').addEventListener('click', async function() {
         const video = document.querySelector('video');
-        const aSceneCanvas = sceneEl.components.screenshot.getCanvas('perspective');
+        const sceneCanvas = sceneEl.components.screenshot.getCanvas('perspective');
+        
         const finalCanvas = document.createElement("canvas");
-        finalCanvas.width = video.videoWidth; finalCanvas.height = video.videoHeight;
+        // 出力サイズはビデオの解像度に合わせる
+        finalCanvas.width = video.videoWidth; 
+        finalCanvas.height = video.videoHeight;
         const ctx = finalCanvas.getContext("2d");
+
+        // 1. まずカメラ映像を描画
         ctx.drawImage(video, 0, 0, finalCanvas.width, finalCanvas.height);
-        ctx.drawImage(aSceneCanvas, 0, 0, finalCanvas.width, finalCanvas.height);
+
+        // 2. ARキャンバスを歪ませずに重ねるための計算
+        const vWidth = video.videoWidth;
+        const vHeight = video.videoHeight;
+        const cWidth = sceneCanvas.width;
+        const cHeight = sceneCanvas.height;
+
+        const vAspect = vWidth / vHeight;
+        const cAspect = cWidth / cHeight;
+
+        let drawW, drawH, offsetX, offsetY;
+
+        if (cAspect > vAspect) {
+          // キャンバスの方が横長の場合
+          drawH = vHeight;
+          drawW = vHeight * cAspect;
+          offsetX = (vWidth - drawW) / 2;
+          offsetY = 0;
+        } else {
+          // キャンバスの方が縦長の場合（スマホのポートレートなど）
+          drawW = vWidth;
+          drawH = vWidth / cAspect;
+          offsetX = 0;
+          offsetY = (vHeight - drawH) / 2;
+        }
+
+        // 3. 計算した座標でAR部分を上書き描画
+        ctx.drawImage(sceneCanvas, offsetX, offsetY, drawW, drawH);
+        
         const dataURL = finalCanvas.toDataURL('image/png');
+
+        // フラッシュ演出
         const flash = document.createElement('div');
         flash.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:white;z-index:10001;pointer-events:none;';
         document.body.appendChild(flash);
         setTimeout(() => { flash.style.transition = 'opacity 0.4s'; flash.style.opacity = '0'; setTimeout(() => document.body.removeChild(flash), 400); }, 50);
+
         try {
           if (navigator.share) {
             const blob = await (await fetch(dataURL)).blob();
