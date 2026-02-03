@@ -61,7 +61,7 @@
         <a-image src="#kage-img" rotation="-90 0 0" position="0 0.05 0" scale="6 6 6" transparent="true" opacity="0.7"></a-image>
       </a-entity>
 
-      <a-entity camera look-controls="enabled: true" far="1000"></a-entity>
+      <a-entity camera look-controls="enabled: true; touchEnabled: false;" far="1000"></a-entity>
     </a-scene>
 
     <script>
@@ -135,36 +135,42 @@
         for (let i = 0; i < 15; i++) { createBurstPetal(); }
       });
 
-      function createBurstPetal() {
-        const petal = document.createElement('a-entity');
-        petal.setAttribute('mixin', 'petal');
-        // カメラの手前付近に生成
-        const x = (Math.random() - 0.5) * 4;
-        const y = 1.2 + (Math.random() - 0.5) * 1.5;
-        const z = -2 + (Math.random() - 0.5) * 1.5;
-        
-        petal.setAttribute('position', `${x} ${y} ${z}`);
-        petal.setAttribute('material', `color: #FFD1DC; opacity: 0.9;`);
-        
-        const destX = x + (Math.random() - 0.5) * 12;
-        const destZ = z - (Math.random() * 10); // 前方へ飛ばす
-        
-        petal.setAttribute('animation__burst', {
-          property: 'position',
-          to: `${destX} -5 ${destZ}`,
-          dur: 5000 + Math.random() * 3000,
-          easing: 'easeOutQuad'
-        });
-        
-        sceneEl.appendChild(petal);
-        petals.push(petal);
-        setTimeout(() => {
-          if (petal.parentNode) {
-            petal.parentNode.removeChild(petal);
-            petals = petals.filter(p => p !== petal);
-          }
-        }, 8000);
-      }
+function createBurstPetal() {
+  const petal = document.createElement('a-entity');
+  petal.setAttribute('mixin', 'petal');
+  
+  const x = (Math.random() - 0.5) * 4;
+  const y = 1.2 + (Math.random() - 0.5) * 1.5;
+  const z = -2 + (Math.random() - 0.5) * 1.5;
+  
+  petal.setAttribute('position', `${x} ${y} ${z}`);
+  // --- 修正: 初期回転をランダムに設定 ---
+  petal.setAttribute('rotation', `${Math.random()*360} ${Math.random()*360} ${Math.random()*360}`);
+  petal.setAttribute('material', `color: #FFD1DC; opacity: 0.9;`);
+  
+  const destX = x + (Math.random() - 0.5) * 12;
+  const destZ = z - (Math.random() * 10);
+  
+  petal.setAttribute('animation__burst', {
+    property: 'position',
+    to: `${destX} -5 ${destZ}`,
+    dur: 5000 + Math.random() * 3000,
+    easing: 'easeOutQuad'
+  });
+
+  // --- 追加: 飛んでいる間もクルクル回るようにする ---
+  petal.setAttribute('animation__rotate', {
+    property: 'rotation',
+    to: `${Math.random()*720} ${Math.random()*720} ${Math.random()*720}`,
+    dur: 4000 + Math.random() * 2000,
+    loop: true,
+    easing: 'linear'
+  });
+  
+  sceneEl.appendChild(petal);
+  petals.push(petal);
+  // (setTimeout部分はそのまま)
+}
 
       // --- インタラクション: スワイプで風 ---
       window.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; });
