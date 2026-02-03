@@ -176,7 +176,7 @@
           const radius = 2 + Math.random() * 6;
           const x = tx + Math.cos(angle) * radius;
           const z = tz + Math.sin(angle) * radius;
-          const y = 0.2 + Math.random() * 1.5;
+          const y = 0.1 + Math.random() * 1;
 
           cloud.setAttribute('position', `${x} ${y} ${z}`);
           const randomColor = pinkColors[Math.floor(Math.random() * pinkColors.length)];
