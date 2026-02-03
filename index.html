@@ -68,7 +68,7 @@
 
       let placedGroups = []; 
       const MAX_TREES = 4;
-      let treeCounter = 0; // 高さを微調整するためのカウンター
+      let treeCounter = 0; 
       
       let petals = [];
       let petalColor = "#ffffff";
@@ -98,9 +98,12 @@
         const targetX = camera.position.x + direction.x * distance;
         const targetZ = camera.position.z + direction.z * distance;
 
-        // --- 1. 木のエンティティ ---
+        // --- マスターグループ（フェードアウト用） ---
+        const masterGroup = document.createElement('a-entity');
+        masterGroup.setAttribute('position', `${targetX} -8 ${targetZ}`);
+
+        // --- 1. 木のエンティティ（回転あり） ---
         const treeEntity = document.createElement('a-entity');
-        treeEntity.setAttribute('position', `${targetX} -8 ${targetZ}`);
         const randomRotation = Math.random() * 360;
         treeEntity.setAttribute('rotation', `0 ${randomRotation} 0`);
 
@@ -109,36 +112,32 @@
         model.setAttribute('scale', '0.7 0.7 0.7');
         treeEntity.appendChild(model);
 
-        // --- 影の重なり対策 (Z-Fighting防止) ---
         const shadow = document.createElement('a-entity');
         treeCounter++;
-        const shadowY = 0.05 + (treeCounter % 10 * 0.005); // 5mmずつ高さをずらす
+        const shadowY = 0.05 + (treeCounter % 10 * 0.005);
         shadow.setAttribute('geometry', 'primitive: plane; width: 6; height: 6');
         shadow.setAttribute('material', {
-          src: '#kage-img',
-          transparent: true,
-          opacity: 0.4,
-          depthWrite: false, // 重なってもガビガビさせない
-          shader: 'flat'
+          src: '#kage-img', transparent: true, opacity: 0.4, depthWrite: false, shader: 'flat'
         });
         shadow.setAttribute('rotation', '-90 0 0');
         shadow.setAttribute('position', `0 ${shadowY} 0`);
         treeEntity.appendChild(shadow);
 
-        sceneEl.appendChild(treeEntity);
+        masterGroup.appendChild(treeEntity);
 
-        // --- 2. 雲のコンテナ ---
+        // --- 2. 雲のコンテナ（回転なし） ---
         const cloudContainer = document.createElement('a-entity');
-        cloudContainer.setAttribute('position', `${targetX} -8 ${targetZ}`);
-        sceneEl.appendChild(cloudContainer);
+        masterGroup.appendChild(cloudContainer);
         createClouds(cloudContainer);
 
-        // --- 3. 管理処理（ふわっと消えるアニメーション付） ---
-        placedGroups.push({ tree: treeEntity, clouds: cloudContainer });
+        sceneEl.appendChild(masterGroup);
+
+        // --- 3. 管理処理（フェードアウト削除） ---
+        placedGroups.push(masterGroup);
 
         if (placedGroups.length > MAX_TREES) {
           const oldest = placedGroups.shift();
-          removeWithAnimation(oldest);
+          removeWithFade(oldest);
         }
 
         if (placedGroups.length === 1 && petals.length === 0) {
@@ -148,66 +147,39 @@
         }
       }
 
-function removeWithAnimation(group) {
-        // 1. 木のモデルと影をフェードアウトさせる
-        // モデルの子要素すべてに opacity アニメーションを適用
-        const treeParts = group.tree.querySelectorAll('*');
-        treeParts.forEach(part => {
-          part.setAttribute('animation', 'property: material.opacity; to: 0; dur: 2000; easing: linear');
-        });
-
-        // 2. 雲のコンテナの中にあるすべての雲をフェードアウトさせる
-        const clouds = group.clouds.querySelectorAll('[mixin="cloud-mixin"]');
-        clouds.forEach(cloud => {
-          cloud.setAttribute('animation', 'property: material.opacity; to: 0; dur: 2000; easing: linear');
+      function removeWithFade(group) {
+        // 全体の透明度をアニメーションさせるために、すべての子要素の不透明度を下げる命令を送る
+        const allEntities = group.querySelectorAll('[material]');
+        allEntities.forEach(el => {
+          el.setAttribute('animation', 'property: material.opacity; to: 0; dur: 2000; easing: linear');
         });
         
-        // 3. アニメーションが終わる2秒後に実体を削除
+        // GLBモデルなどの特殊なものは scale を 0 にして消滅させるのが最も確実です
+        group.setAttribute('animation', 'property: scale; to: 0 0 0; dur: 2000; easing: linear');
+
         setTimeout(() => {
-          if (group.tree.parentNode) group.tree.parentNode.removeChild(group.tree);
-          if (group.clouds.parentNode) group.clouds.parentNode.removeChild(group.clouds);
-        }, 2000);
+          if (group.parentNode) group.parentNode.removeChild(group);
+        }, 2050);
       }
 
       function createPetal() {
         if (placedGroups.length === 0) return;
         const petal = document.createElement('a-entity');
         petal.setAttribute('mixin', 'petal');
-        
         const angle = (Math.random() - 0.5) * (Math.PI * 0.66); 
         const radius = 1 + Math.random() * 10; 
         const x = Math.sin(angle) * radius;
         const z = -Math.cos(angle) * radius;
-
         petal.setAttribute('position', `${x} 1.5 ${z}`);
         petal.setAttribute('rotation', `${Math.random()*360} ${Math.random()*360} ${Math.random()*360}`);
         petal.setAttribute('material', `color: ${petalColor}; opacity: 0.8;`);
-        
         const dur = 15000 + Math.random() * 10000;
-        
-        petal.setAttribute('animation__fall', { 
-            property: 'position', 
-            to: `${x + (Math.random()-0.5)*3} -5 ${z - 2}`, 
-            dur: dur, easing: 'linear' 
-        });
-
-        petal.setAttribute('animation__rotate', { 
-            property: 'rotation', 
-            to: `${Math.random()*360 + 360} ${Math.random()*360 + 720} ${Math.random()*360 + 360}`, 
-            dur: 6000 + Math.random() * 2000, 
-            loop: true, 
-            easing: 'linear' 
-        });
-        
+        petal.setAttribute('animation__fall', { property: 'position', to: `${x + (Math.random()-0.5)*3} -5 ${z - 2}`, dur: dur, easing: 'linear' });
+        petal.setAttribute('animation__rotate', { property: 'rotation', to: `${Math.random()*360 + 360} ${Math.random()*360 + 720} ${Math.random()*360 + 360}`, dur: 6000 + Math.random() * 2000, loop: true, easing: 'linear' });
         sceneEl.appendChild(petal);
         petals.push(petal);
-        
         setTimeout(() => { 
-          if (petal.parentNode) { 
-            petal.parentNode.removeChild(petal); 
-            petals = petals.filter(p => p !== petal); 
-            createPetal(); 
-          } 
+          if (petal.parentNode) { petal.parentNode.removeChild(petal); petals = petals.filter(p => p !== petal); createPetal(); } 
         }, dur);
       }
 
@@ -221,13 +193,11 @@ function removeWithAnimation(group) {
           const x = Math.cos(angle) * radius;
           const z = Math.sin(angle) * radius;
           const y = 4 + Math.random() * 3; 
-
           cloud.setAttribute('position', `${x} ${y} ${z}`);
           const randomColor = pinkColors[Math.floor(Math.random() * pinkColors.length)];
           cloud.setAttribute('material', `color: ${randomColor}; opacity: 0.35`);
           const size = 5 + Math.random() * 5;
           cloud.setAttribute('geometry', `primitive: plane; width: ${size}; height: ${size * 0.6}`);
-          
           parentEntity.appendChild(cloud);
         }
       }
@@ -250,7 +220,7 @@ function removeWithAnimation(group) {
         if (Math.abs(diffX) > 30 || Math.abs(diffZ) > 30) {
           petals.forEach(p => {
             const pos = p.getAttribute('position');
-            p.setAttribute('animation__fall', { property: 'position', to: `${pos.x + diffX/15} -10 ${pos.z + diffZ/15}`, dur: 6000, easing: 'easeOutQuad' });
+            p.setAttribute('animation', { property: 'position', to: `${pos.x + diffX/15} -10 ${pos.z + diffZ/15}`, dur: 6000, easing: 'easeOutQuad' });
           });
         }
       });
@@ -261,17 +231,13 @@ function removeWithAnimation(group) {
         const finalCanvas = document.createElement("canvas");
         finalCanvas.width = video.videoWidth; finalCanvas.height = video.videoHeight;
         const ctx = finalCanvas.getContext("2d");
-
         ctx.drawImage(video, 0, 0, finalCanvas.width, finalCanvas.height);
         ctx.drawImage(aSceneCanvas, 0, 0, finalCanvas.width, finalCanvas.height);
-        
         const dataURL = finalCanvas.toDataURL('image/png');
-
         const flash = document.createElement('div');
         flash.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:white;z-index:10001;pointer-events:none;';
         document.body.appendChild(flash);
         setTimeout(() => { flash.style.transition = 'opacity 0.4s'; flash.style.opacity = '0'; setTimeout(() => document.body.removeChild(flash), 400); }, 50);
-
         try {
           if (navigator.share) {
             const blob = await (await fetch(dataURL)).blob();
