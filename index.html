@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Ginza Sakura Sky - Full Edition</title>
+    <title>Ginza Sakura Sky - Fade Out Edition</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
@@ -98,7 +98,6 @@
         const targetX = camera.position.x + direction.x * distance;
         const targetZ = camera.position.z + direction.z * distance;
 
-        // --- マスターグループ（フェードアウト用） ---
         const masterGroup = document.createElement('a-entity');
         masterGroup.setAttribute('position', `${targetX} -8 ${targetZ}`);
 
@@ -110,6 +109,17 @@
         const model = document.createElement('a-entity');
         model.setAttribute('gltf-model', '#sakura-tree-model');
         model.setAttribute('scale', '0.7 0.7 0.7');
+        
+        // GLBの透明度操作を可能にするための初期化
+        model.addEventListener('model-loaded', () => {
+          model.object3D.traverse((node) => {
+            if (node.isMesh) {
+              node.material.transparent = true;
+              node.material.opacity = 1;
+            }
+          });
+        });
+
         treeEntity.appendChild(model);
 
         const shadow = document.createElement('a-entity');
@@ -131,8 +141,6 @@
         createClouds(cloudContainer);
 
         sceneEl.appendChild(masterGroup);
-
-        // --- 3. 管理処理（フェードアウト削除） ---
         placedGroups.push(masterGroup);
 
         if (placedGroups.length > MAX_TREES) {
@@ -148,18 +156,37 @@
       }
 
       function removeWithFade(group) {
-        // 全体の透明度をアニメーションさせるために、すべての子要素の不透明度を下げる命令を送る
-        const allEntities = group.querySelectorAll('[material]');
-        allEntities.forEach(el => {
-          el.setAttribute('animation', 'property: material.opacity; to: 0; dur: 2000; easing: linear');
-        });
-        
-        // GLBモデルなどの特殊なものは scale を 0 にして消滅させるのが最も確実です
-        group.setAttribute('animation', 'property: scale; to: 0 0 0; dur: 2000; easing: linear');
+        // 木のモデル、雲、影のすべてを探索してフェードアウト
+        const duration = 2000;
+        const startTime = performance.now();
 
-        setTimeout(() => {
-          if (group.parentNode) group.parentNode.removeChild(group);
-        }, 2050);
+        function animateFade() {
+          const now = performance.now();
+          const progress = Math.min((now - startTime) / duration, 1);
+          const currentOpacity = 1 - progress;
+
+          group.object3D.traverse((node) => {
+            if (node.material) {
+              node.material.transparent = true;
+              node.material.opacity = node.userData.originalOpacity !== undefined 
+                ? node.userData.originalOpacity * currentOpacity 
+                : currentOpacity * 0.4; // 影などは元々0.4なので調整
+            }
+          });
+
+          if (progress < 1) {
+            requestAnimationFrame(animateFade);
+          } else {
+            if (group.parentNode) group.parentNode.removeChild(group);
+          }
+        }
+        
+        // 最初の透明度を記録（雲や影の元々の薄さを維持するため）
+        group.object3D.traverse((node) => {
+          if (node.material) node.userData.originalOpacity = node.material.opacity;
+        });
+
+        requestAnimationFrame(animateFade);
       }
 
       function createPetal() {
