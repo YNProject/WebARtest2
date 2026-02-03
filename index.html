@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Ginza Sakura Sky - Hybrid Plane AR</title>
+    <title>Ginza Sakura Sky - White Edition</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
@@ -13,7 +13,7 @@
         font-family: sans-serif; text-align: center;
       }
       #start-btn {
-        padding: 15px 35px; font-size: 18px; background: #FFB6C1;
+        padding: 15px 35px; font-size: 18px; background: #fff;
         border: none; border-radius: 30px; cursor: pointer; color: #444; font-weight: bold;
       }
       #shutter-wrapper {
@@ -25,25 +25,17 @@
         border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 4px solid white;
       }
       #shutter-btn-inner { width: 60px; height: 60px; background-color: white; border-radius: 50%; }
-      .instruction-text {
-        position: fixed; top: 10%; width: 100%; text-align: center;
-        color: white; font-family: sans-serif; text-shadow: 1px 1px 4px black;
-        z-index: 9998; display: none; pointer-events: none;
-      }
     </style>
   </head>
   <body style="margin: 0; overflow: hidden;">
     
     <div id="overlay">
-      <h2 style="margin-bottom: 10px;">銀座テラス桜AR</h2>
+      <h2 style="margin-bottom: 10px;">銀座の街に桜を咲かせよう</h2>
       <p style="margin-bottom: 20px;">
-        画面の下の方をタップすると近くに、<br>
-        上の方をタップすると遠くに桜を植えることができます。
+        地面をタップして桜を植えてください
       </p>
       <button id="start-btn">ARを開始する</button>
     </div>
-
-    <div id="instruction" class="instruction-text">地面をタップして桜を植えよう</div>
 
     <div id="shutter-wrapper">
       <div id="shutter-btn"><div id="shutter-btn-inner"></div></div>
@@ -60,17 +52,18 @@
         <img id="kage-img" src="img/kage.png">
         <a-asset-item id="sakura-tree-model" src="model/sakura.glb"></a-asset-item>
 
-        <a-mixin id="petal" geometry="primitive: plane; width: 0.15; height: 0.15" 
-                  material="src: #sakura-white-img; transparent: true; alphaTest: 0.8; side: double; shader: flat"></a-mixin>
+        <a-mixin id="petal" geometry="primitive: plane; width: 0.12; height: 0.12" 
+                  material="src: #sakura-white-img; transparent: true; alphaTest: 0.6; side: double; shader: flat"></a-mixin>
         <a-mixin id="cloud-mixin" material="src: #cloud-img; transparent: true; alphaTest: 0.1; side: double; shader: flat; depthTest: false;"></a-mixin>
       </a-assets>
 
       <a-entity id="sakura-anchor" visible="false">
-        <a-entity id="sakura-tree" gltf-model="#sakura-tree-model" scale="1.5 1.5 1.5" position="0 0 0"></a-entity>
-        <a-image src="#kage-img" rotation="-90 0 0" position="0 0.05 0" scale="6 6 6" transparent="true" opacity="0.7"></a-image>
+        <a-entity id="sakura-tree" gltf-model="#sakura-tree-model" scale="1.5 1.5 1.5"></a-entity>
+        <a-image src="#kage-img" rotation="-90 0 0" position="0 0.05 0" scale="6 6 6" transparent="true" opacity="0.5"></a-image>
       </a-entity>
 
-      <a-entity id="ambient-light" light="type: ambient; color: #ffffff; intensity: 1.0"></a-entity>
+      <a-entity id="ambient-light" light="type: ambient; color: #ffffff; intensity: 1.2"></a-entity>
+      <a-entity id="dir-light" light="type: directional; color: #ffffff; intensity: 0.5" position="-1 2 1"></a-entity>
 
       <a-entity camera look-controls="enabled: true; touchEnabled: false;" far="1000"></a-entity>
     </a-scene>
@@ -79,21 +72,19 @@
       const sceneEl = document.querySelector('#scene');
       const startBtn = document.querySelector('#start-btn');
       const overlay = document.querySelector('#overlay');
-      const instruction = document.querySelector('#instruction');
       const shutterWrapper = document.querySelector('#shutter-wrapper');
       const sakuraAnchor = document.querySelector('#sakura-anchor');
       const ambientLight = document.querySelector('#ambient-light');
 
-      const MAX_PETALS = 250; 
+      const MAX_PETALS = 280; 
       let petals = [];
       let treePlaced = false;
       let touchStartX = 0;
       let touchStartY = 0;
-      let currentTimeColor = "#FFB6C1"; // ライティング連動用
+      let petalColor = "#ffffff"; // 初期値は白
 
       startBtn.addEventListener('click', function() {
         overlay.style.display = 'none';
-        instruction.style.display = 'block';
         shutterWrapper.style.display = 'flex';
         initAR();
       });
@@ -103,22 +94,17 @@
         updateLightingByTime(); 
       }
 
-      // --- 擬似平面検知: タップ位置の高さで奥行きを決定 ---
       window.addEventListener('mousedown', (e) => {
         if (overlay.style.display !== 'none' || e.target.closest('#shutter-wrapper')) return;
 
         if (!treePlaced) {
           const screenY = e.clientY / window.innerHeight;
-          
-          // 画面の下(1.0)なら5m、上(0.2)なら30m先に配置
           const clampedY = Math.max(0.2, screenY); 
-          const distance = 5 + (1 - clampedY) * 35; 
+          const distance = 4 + (1 - clampedY) * 30; // 距離感の微調整
 
           const camera = document.querySelector('[camera]').object3D;
           const direction = new THREE.Vector3(0, 0, -1);
           direction.applyQuaternion(camera.quaternion);
-          
-          // 水平方向のみに固定（木が空に浮かないように）
           direction.y = 0;
           direction.normalize();
 
@@ -128,18 +114,17 @@
           sakuraAnchor.setAttribute('position', `${targetX} -8 ${targetZ}`);
           sakuraAnchor.setAttribute('visible', 'true');
           treePlaced = true;
-          
-          instruction.innerText = "桜を植えました！スワイプで風を送れます";
-          setTimeout(() => { instruction.style.display = 'none'; }, 3000);
 
-          // 木が置かれてから花びらを降らせ始める
+          // 桜の木自体にも白さを強調するマテリアル設定を上書き（モデルによる）
+          document.querySelector('#sakura-tree').setAttribute('material', 'color: #ffffff; mesh-smooth-shading: true');
+
           for (let i = 0; i < MAX_PETALS; i++) { 
-            setTimeout(() => createPetal(), Math.random() * 10000); 
+            setTimeout(() => createPetal(), Math.random() * 8000); 
           }
         }
 
-        // タップした瞬間に手元で舞う花吹雪（演出）
-        for (let i = 0; i < 15; i++) { createBurstPetal(); }
+        // タップ時の花吹雪（白に近い薄ピンク）
+        for (let i = 0; i < 12; i++) { createBurstPetal(); }
       });
 
       function createPetal() {
@@ -149,18 +134,18 @@
         
         const treePos = sakuraAnchor.getAttribute('position');
         const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * 8; 
+        const radius = Math.random() * 7; 
         const x = parseFloat(treePos.x) + Math.cos(angle) * radius;
         const z = parseFloat(treePos.z) + Math.sin(angle) * radius;
 
-        petal.setAttribute('position', `${x} 10 ${z}`);
-        // ライティング連動カラーを適用
-        petal.setAttribute('material', `color: ${currentTimeColor}; opacity: 0.9;`);
+        petal.setAttribute('position', `${x} 12 ${z}`);
+        // 花びらの色を白〜ごく薄いピンクに
+        petal.setAttribute('material', `color: ${petalColor}; opacity: 0.85;`);
         
-        const dur = 10000 + Math.random() * 5000;
+        const dur = 9000 + Math.random() * 6000;
         petal.setAttribute('animation__fall', { 
             property: 'position', 
-            to: `${x + (Math.random()-0.5)*4} -10 ${z + (Math.random()-0.5)*4}`, 
+            to: `${x + (Math.random()-0.5)*5} -10 ${z + (Math.random()-0.5)*5}`, 
             dur: dur, easing: 'linear' 
         });
         petal.setAttribute('animation__rotate', { property: 'rotation', to: `${Math.random()*360} ${Math.random()*720} ${Math.random()*360}`, dur: 5000, loop: true });
@@ -179,35 +164,38 @@
       function createBurstPetal() {
         const petal = document.createElement('a-entity');
         petal.setAttribute('mixin', 'petal');
-        const x = (Math.random() - 0.5) * 4;
-        const y = 1.2 + (Math.random() - 0.5) * 1.5;
-        const z = -2 + (Math.random() - 0.5) * 1.5;
+        const x = (Math.random() - 0.5) * 3;
+        const y = 1.5 + (Math.random() - 0.5) * 1;
+        const z = -2;
         petal.setAttribute('position', `${x} ${y} ${z}`);
         petal.setAttribute('rotation', `${Math.random()*360} ${Math.random()*360} ${Math.random()*360}`);
-        petal.setAttribute('material', `color: #FFD1DC; opacity: 0.9;`);
+        petal.setAttribute('material', `color: #fffafa; opacity: 0.9;`);
         
-        const destX = x + (Math.random() - 0.5) * 12;
-        const destZ = z - (Math.random() * 10);
-        petal.setAttribute('animation__burst', { property: 'position', to: `${destX} -5 ${destZ}`, dur: 5000 + Math.random() * 2000, easing: 'easeOutQuad' });
+        const destX = x + (Math.random() - 0.5) * 10;
+        const destZ = z - (Math.random() * 8);
+        petal.setAttribute('animation__burst', { property: 'position', to: `${destX} -5 ${destZ}`, dur: 4500, easing: 'easeOutQuad' });
         petal.setAttribute('animation__rotate', { property: 'rotation', to: `${Math.random()*720} ${Math.random()*720} ${Math.random()*720}`, dur: 4000, loop: true, easing: 'linear' });
         
         sceneEl.appendChild(petal);
         petals.push(petal);
-        setTimeout(() => { if (petal.parentNode) { petal.parentNode.removeChild(petal); petals = petals.filter(p => p !== petal); } }, 6000);
+        setTimeout(() => { if (petal.parentNode) { petal.parentNode.removeChild(petal); petals = petals.filter(p => p !== petal); } }, 5000);
       }
 
       function updateLightingByTime() {
         const hour = new Date().getHours();
+        // 銀座の街に馴染むよう、極端な色変化を抑えて「白さ」を優先
         if (hour >= 16 && hour < 18) {
-          ambientLight.setAttribute('light', 'color: #ffccaa; intensity: 0.8'); // 夕方
-          currentTimeColor = "#FFB6C1";
+          ambientLight.setAttribute('light', 'color: #fffafa; intensity: 1.1'); 
+          petalColor = "#ffffff";
         } else if (hour >= 18 || hour < 6) {
-          ambientLight.setAttribute('light', 'color: #8899ff; intensity: 0.6'); // 夜
-          currentTimeColor = "#FFD1DC"; 
+          ambientLight.setAttribute('light', 'color: #f0f0ff; intensity: 0.8'); 
+          petalColor = "#f8f8ff"; 
+        } else {
+          ambientLight.setAttribute('light', 'color: #ffffff; intensity: 1.2');
+          petalColor = "#ffffff";
         }
       }
 
-      // スワイプで風を送る
       window.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; });
       window.addEventListener('touchend', (e) => {
         const diffX = e.changedTouches[0].clientX - touchStartX;
@@ -221,14 +209,14 @@
       });
 
       function createClouds() {
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 15; i++) {
           const cloud = document.createElement('a-entity');
           cloud.setAttribute('mixin', 'cloud-mixin');
           const angle = Math.random() * Math.PI * 2;
-          const radius = 20 + Math.random() * 30;
-          cloud.setAttribute('position', `${Math.cos(angle) * radius} ${8 + Math.random() * 10} ${Math.sin(angle) * radius}`);
-          cloud.setAttribute('material', `color: #FFD1DC; opacity: 0.4`);
-          cloud.setAttribute('geometry', `primitive: plane; width: 15; height: 10`);
+          const radius = 25 + Math.random() * 20;
+          cloud.setAttribute('position', `${Math.cos(angle) * radius} ${10 + Math.random() * 8} ${Math.sin(angle) * radius}`);
+          cloud.setAttribute('material', `color: #ffffff; opacity: 0.3`); // 雲も白く
+          cloud.setAttribute('geometry', `primitive: plane; width: 18; height: 12`);
           sceneEl.appendChild(cloud);
         }
       }
