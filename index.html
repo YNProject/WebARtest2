@@ -148,11 +148,21 @@
         }
       }
 
-      function removeWithAnimation(group) {
-        // 徐々に透明にして小さくして消す
-        group.tree.setAttribute('animation', 'property: scale; to: 0 0 0; dur: 2000; easing: easeInBack');
-        group.clouds.setAttribute('animation', 'property: scale; to: 0 0 0; dur: 2000; easing: easeInBack');
+function removeWithAnimation(group) {
+        // 1. 木のモデルと影をフェードアウトさせる
+        // モデルの子要素すべてに opacity アニメーションを適用
+        const treeParts = group.tree.querySelectorAll('*');
+        treeParts.forEach(part => {
+          part.setAttribute('animation', 'property: material.opacity; to: 0; dur: 2000; easing: linear');
+        });
+
+        // 2. 雲のコンテナの中にあるすべての雲をフェードアウトさせる
+        const clouds = group.clouds.querySelectorAll('[mixin="cloud-mixin"]');
+        clouds.forEach(cloud => {
+          cloud.setAttribute('animation', 'property: material.opacity; to: 0; dur: 2000; easing: linear');
+        });
         
+        // 3. アニメーションが終わる2秒後に実体を削除
         setTimeout(() => {
           if (group.tree.parentNode) group.tree.parentNode.removeChild(group.tree);
           if (group.clouds.parentNode) group.clouds.parentNode.removeChild(group.clouds);
