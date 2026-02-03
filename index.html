@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Ginza Sakura Sky - Fixed Position Edition</title>
+    <title>Ginza Sakura Sky - Re-Fixed</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
@@ -36,9 +36,11 @@
     
     <div id="overlay">
       <h2 style="margin-bottom: 10px;">銀座の街に桜を咲かせよう</h2>
-      <p style="margin-bottom: 20px;">好きな場所をタップして<br>桜を植えてください</p>
+      <p style="margin-bottom: 20px;">好きな場所をタップして桜を植えてください</p>
       <button id="start-btn">ARを開始する</button>
     </div>
+
+    <div id="instruction" class="instruction-text">地面のあたりをタップして桜を植えよう</div>
 
     <div id="shutter-wrapper">
       <div id="shutter-btn"><div id="shutter-btn-inner"></div></div>
@@ -54,11 +56,10 @@
         <img id="cloud-img" src="img/cloud.png">
         <img id="kage-img" src="img/kage.png">
         <a-asset-item id="sakura-tree-model" src="model/sakura.glb"></a-asset-item>
-
         <a-mixin id="petal" geometry="primitive: plane; width: 0.15; height: 0.15" 
                   material="src: #sakura-white-img; transparent: true; alphaTest: 0.8; side: double; shader: flat"></a-mixin>
         <a-mixin id="cloud-mixin" material="src: #cloud-img; transparent: true; alphaTest: 0.1; side: double; shader: flat; depthTest: false;"></a-mixin>
-      </assets>
+      </a-assets>
 
       <a-entity id="sakura-anchor" visible="false">
         <a-entity id="sakura-tree" gltf-model="#sakura-tree-model" scale="1 1 1" position="0 0 0"></a-entity>
@@ -67,7 +68,7 @@
 
       <a-entity id="ambient-light" light="type: ambient; color: #ffffff; intensity: 1.2"></a-entity>
 
-      <a-entity camera look-controls="enabled: true; touchEnabled: false;" far="1000"></a-entity>
+      <a-entity id="main-camera" camera look-controls="enabled: true; touchEnabled: false;" far="1000"></a-entity>
     </a-scene>
 
     <script>
@@ -77,127 +78,72 @@
       const instruction = document.querySelector('#instruction');
       const shutterWrapper = document.querySelector('#shutter-wrapper');
       const sakuraAnchor = document.querySelector('#sakura-anchor');
+      const cameraEl = document.querySelector('#main-camera');
 
-      const MAX_PETALS = 250; 
-      let petals = [];
       let treePlaced = false;
 
       startBtn.addEventListener('click', function() {
         overlay.style.display = 'none';
         instruction.style.display = 'block';
         shutterWrapper.style.display = 'flex';
-        initAR();
       });
-
-      function initAR() {
-        createClouds();
-      }
 
       window.addEventListener('mousedown', (e) => {
         if (overlay.style.display !== 'none' || e.target.closest('#shutter-wrapper')) return;
 
         if (!treePlaced) {
-          const camera = document.querySelector('[camera]').object3D;
-          const direction = new THREE.Vector3(0, 0, -1);
-          direction.applyQuaternion(camera.quaternion);
-          
-          // 出現距離を10から30に変更
-          const distance = 30; 
-          const targetX = camera.position.x + direction.x * distance;
-          const targetZ = camera.position.z + direction.z * distance;
+          const cameraThree = cameraEl.object3D;
+          cameraThree.updateMatrixWorld();
 
+          // カメラの向いている「水平な」方向を計算
+          const direction = new THREE.Vector3(0, 0, -1);
+          direction.applyQuaternion(cameraThree.getWorldQuaternion(new THREE.Quaternion()));
+          direction.y = 0; // 上下方向を無視して水平にする
+          direction.normalize();
+          
+          const distance = 15; // 30から15に変更（確実に見える距離）
+          const worldPos = new THREE.Vector3();
+          cameraThree.getWorldPosition(worldPos);
+
+          const targetX = worldPos.x + direction.x * distance;
+          const targetZ = worldPos.z + direction.z * distance;
+
+          // 地面の位置（-8）にセット
           sakuraAnchor.setAttribute('position', `${targetX} -8 ${targetZ}`);
           sakuraAnchor.setAttribute('visible', 'true');
           treePlaced = true;
           instruction.innerText = "桜が植わりました！";
           setTimeout(() => { instruction.style.display = 'none'; }, 3000);
 
-          for (let i = 0; i < MAX_PETALS; i++) { 
-            setTimeout(() => createPetal(), Math.random() * 10000); 
-          }
+          for (let i = 0; i < 150; i++) { setTimeout(() => createPetal(), Math.random() * 5000); }
         }
-
-        for (let i = 0; i < 15; i++) { createBurstPetal(); }
+        for (let i = 0; i < 10; i++) { createBurstPetal(); }
       });
 
       function createPetal() {
-        if (!treePlaced) return;
         const petal = document.createElement('a-entity');
         petal.setAttribute('mixin', 'petal');
-        
         const treePos = sakuraAnchor.getAttribute('position');
-        const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * 15; // 遠くへ置くため舞う範囲も少し拡大
-        const x = parseFloat(treePos.x) + Math.cos(angle) * radius;
-        const z = parseFloat(treePos.z) + Math.sin(angle) * radius;
-
+        const x = parseFloat(treePos.x) + (Math.random() - 0.5) * 15;
+        const z = parseFloat(treePos.z) + (Math.random() - 0.5) * 15;
         petal.setAttribute('position', `${x} 10 ${z}`);
         petal.setAttribute('material', `color: #FFB6C1; opacity: 0.9;`);
-        
-        const dur = 10000 + Math.random() * 5000;
-        petal.setAttribute('animation__fall', { 
-            property: 'position', 
-            to: `${x + (Math.random()-0.5)*4} -10 ${z + (Math.random()-0.5)*4}`, 
-            dur: dur, easing: 'linear' 
-        });
-        petal.setAttribute('animation__rotate', { property: 'rotation', to: `${Math.random()*360} ${Math.random()*720} ${Math.random()*360}`, dur: 5000, loop: true });
-        
+        const dur = 8000 + Math.random() * 4000;
+        petal.setAttribute('animation__fall', { property: 'position', to: `${x} -10 ${z}`, dur: dur, easing: 'linear' });
         sceneEl.appendChild(petal);
-        petals.push(petal);
-        setTimeout(() => { 
-          if (petal.parentNode) { 
-            petal.parentNode.removeChild(petal); 
-            petals = petals.filter(p => p !== petal); 
-            createPetal(); 
-          } 
-        }, dur);
+        setTimeout(() => { if (petal.parentNode) { petal.parentNode.removeChild(petal); createPetal(); } }, dur);
       }
 
       function createBurstPetal() {
         const petal = document.createElement('a-entity');
         petal.setAttribute('mixin', 'petal');
-        const x = (Math.random() - 0.5) * 4;
-        const y = 1.2 + (Math.random() - 0.5) * 1.5;
-        const z = -2 + (Math.random() - 0.5) * 1.5;
-        petal.setAttribute('position', `${x} ${y} ${z}`);
-        petal.setAttribute('rotation', `${Math.random()*360} ${Math.random()*360} ${Math.random()*360}`);
-        petal.setAttribute('material', `color: #FFD1DC; opacity: 0.9;`);
-        
-        const destX = x + (Math.random() - 0.5) * 12;
-        const destZ = z - (Math.random() * 10);
-        petal.setAttribute('animation__burst', { property: 'position', to: `${destX} -5 ${destZ}`, dur: 5000 + Math.random() * 2000, easing: 'easeOutQuad' });
-        petal.setAttribute('animation__rotate', { property: 'rotation', to: `${Math.random()*720} ${Math.random()*720} ${Math.random()*720}`, dur: 4000, loop: true, easing: 'linear' });
-        
-        sceneEl.appendChild(petal);
-        petals.push(petal);
-        setTimeout(() => { if (petal.parentNode) { petal.parentNode.removeChild(petal); petals = petals.filter(p => p !== petal); } }, 6000);
+        petal.setAttribute('position', `0 1.5 -2`); // カメラの前
+        const destX = (Math.random() - 0.5) * 10;
+        const destZ = -10 - (Math.random() * 5);
+        petal.setAttribute('animation__burst', { property: 'position', to: `${destX} -5 ${destZ}`, dur: 4000, easing: 'easeOutQuad' });
+        cameraEl.appendChild(petal); // カメラの子要素として生成
+        setTimeout(() => { if (petal.parentNode) petal.parentNode.removeChild(petal); }, 4500);
       }
-
-      function createClouds() {
-        for (let i = 0; i < 20; i++) {
-          const cloud = document.createElement('a-entity');
-          cloud.setAttribute('mixin', 'cloud-mixin');
-          const angle = Math.random() * Math.PI * 2;
-          const radius = 30 + Math.random() * 40; // 雲も少し遠くに広げました
-          cloud.setAttribute('position', `${Math.cos(angle) * radius} ${10 + Math.random() * 10} ${Math.sin(angle) * radius}`);
-          cloud.setAttribute('material', `color: #FFD1DC; opacity: 0.4`);
-          cloud.setAttribute('geometry', `primitive: plane; width: 20; height: 12`);
-          sceneEl.appendChild(cloud);
-        }
-      }
-
-      document.querySelector('#shutter-btn').addEventListener('click', function() {
-        const video = document.querySelector('video');
-        const aSceneCanvas = sceneEl.components.screenshot.getCanvas('perspective');
-        const finalCanvas = document.createElement("canvas");
-        finalCanvas.width = video.videoWidth; finalCanvas.height = video.videoHeight;
-        const ctx = finalCanvas.getContext("2d");
-        ctx.drawImage(video, 0, 0, finalCanvas.width, finalCanvas.height);
-        ctx.drawImage(aSceneCanvas, 0, 0, finalCanvas.width, finalCanvas.height);
-        const dataURL = finalCanvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.download = `sakura-${Date.now()}.png`; link.href = dataURL; link.click();
-      });
     </script>
   </body>
 </html>
