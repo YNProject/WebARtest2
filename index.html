@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Ginza Sakura Sky - Re-Fixed</title>
+    <title>Ginza Sakura Sky - Wind & Spin Edition</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
@@ -53,13 +53,11 @@
       
       <a-assets>
         <img id="sakura-white-img" src="img/sakuraWhite.png">
-        <img id="cloud-img" src="img/cloud.png">
         <img id="kage-img" src="img/kage.png">
         <a-asset-item id="sakura-tree-model" src="model/sakura.glb"></a-asset-item>
         <a-mixin id="petal" geometry="primitive: plane; width: 0.15; height: 0.15" 
                   material="src: #sakura-white-img; transparent: true; alphaTest: 0.8; side: double; shader: flat"></a-mixin>
-        <a-mixin id="cloud-mixin" material="src: #cloud-img; transparent: true; alphaTest: 0.1; side: double; shader: flat; depthTest: false;"></a-mixin>
-      </a-assets>
+      </assets>
 
       <a-entity id="sakura-anchor" visible="false">
         <a-entity id="sakura-tree" gltf-model="#sakura-tree-model" scale="1 1 1" position="0 0 0"></a-entity>
@@ -81,6 +79,8 @@
       const cameraEl = document.querySelector('#main-camera');
 
       let treePlaced = false;
+      let petals = [];
+      let touchStartX = 0, touchStartY = 0;
 
       startBtn.addEventListener('click', function() {
         overlay.style.display = 'none';
@@ -95,55 +95,87 @@
           const cameraThree = cameraEl.object3D;
           cameraThree.updateMatrixWorld();
 
-          // カメラの向いている「水平な」方向を計算
           const direction = new THREE.Vector3(0, 0, -1);
           direction.applyQuaternion(cameraThree.getWorldQuaternion(new THREE.Quaternion()));
-          direction.y = 0; // 上下方向を無視して水平にする
+          direction.y = 0; 
           direction.normalize();
           
-          const distance = 15; // 30から15に変更（確実に見える距離）
+          const distance = 15; 
           const worldPos = new THREE.Vector3();
           cameraThree.getWorldPosition(worldPos);
 
           const targetX = worldPos.x + direction.x * distance;
           const targetZ = worldPos.z + direction.z * distance;
 
-          // 地面の位置（-8）にセット
           sakuraAnchor.setAttribute('position', `${targetX} -8 ${targetZ}`);
           sakuraAnchor.setAttribute('visible', 'true');
           treePlaced = true;
-          instruction.innerText = "桜が植わりました！";
+          instruction.innerText = "桜が植わりました！スワイプで風を送れます";
           setTimeout(() => { instruction.style.display = 'none'; }, 3000);
 
-          for (let i = 0; i < 150; i++) { setTimeout(() => createPetal(), Math.random() * 5000); }
+          for (let i = 0; i < 150; i++) { setTimeout(() => createPetal(), Math.random() * 8000); }
         }
-        for (let i = 0; i < 10; i++) { createBurstPetal(); }
       });
 
       function createPetal() {
+        if (!treePlaced) return;
         const petal = document.createElement('a-entity');
         petal.setAttribute('mixin', 'petal');
         const treePos = sakuraAnchor.getAttribute('position');
-        const x = parseFloat(treePos.x) + (Math.random() - 0.5) * 15;
-        const z = parseFloat(treePos.z) + (Math.random() - 0.5) * 15;
+        const x = parseFloat(treePos.x) + (Math.random() - 0.5) * 20;
+        const z = parseFloat(treePos.z) + (Math.random() - 0.5) * 20;
+        
         petal.setAttribute('position', `${x} 10 ${z}`);
         petal.setAttribute('material', `color: #FFB6C1; opacity: 0.9;`);
-        const dur = 8000 + Math.random() * 4000;
+        
+        const dur = 10000 + Math.random() * 5000;
         petal.setAttribute('animation__fall', { property: 'position', to: `${x} -10 ${z}`, dur: dur, easing: 'linear' });
+        // 回転を追加
+        petal.setAttribute('animation__rotate', { property: 'rotation', to: `${Math.random()*360} ${Math.random()*720} ${Math.random()*360}`, dur: 5000, loop: true });
+        
         sceneEl.appendChild(petal);
-        setTimeout(() => { if (petal.parentNode) { petal.parentNode.removeChild(petal); createPetal(); } }, dur);
+        petals.push(petal);
+        setTimeout(() => { 
+          if (petal.parentNode) { 
+            petal.parentNode.removeChild(petal); 
+            petals = petals.filter(p => p !== petal);
+            createPetal(); 
+          } 
+        }, dur);
       }
 
-      function createBurstPetal() {
-        const petal = document.createElement('a-entity');
-        petal.setAttribute('mixin', 'petal');
-        petal.setAttribute('position', `0 1.5 -2`); // カメラの前
-        const destX = (Math.random() - 0.5) * 10;
-        const destZ = -10 - (Math.random() * 5);
-        petal.setAttribute('animation__burst', { property: 'position', to: `${destX} -5 ${destZ}`, dur: 4000, easing: 'easeOutQuad' });
-        cameraEl.appendChild(petal); // カメラの子要素として生成
-        setTimeout(() => { if (petal.parentNode) petal.parentNode.removeChild(petal); }, 4500);
-      }
+      // スワイプ（風）のロジックを復活
+      window.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; });
+      window.addEventListener('touchend', (e) => {
+        const diffX = e.changedTouches[0].clientX - touchStartX;
+        const diffY = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(diffX) > 30 || Math.abs(diffY) > 30) {
+          petals.forEach(p => {
+            const pos = p.getAttribute('position');
+            // スワイプ方向に流れるアニメーションを上書き追加
+            p.setAttribute('animation__wind', { 
+              property: 'position', 
+              to: `${pos.x + diffX/20} -10 ${pos.z + diffY/20}`, 
+              dur: 6000, 
+              easing: 'easeOutQuad' 
+            });
+          });
+        }
+      });
+
+      // 撮影ロジック（そのまま）
+      document.querySelector('#shutter-btn').addEventListener('click', function() {
+        const video = document.querySelector('video');
+        const aSceneCanvas = sceneEl.components.screenshot.getCanvas('perspective');
+        const finalCanvas = document.createElement("canvas");
+        finalCanvas.width = video.videoWidth; finalCanvas.height = video.videoHeight;
+        const ctx = finalCanvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, finalCanvas.width, finalCanvas.height);
+        ctx.drawImage(aSceneCanvas, 0, 0, finalCanvas.width, finalCanvas.height);
+        const dataURL = finalCanvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `sakura-${Date.now()}.png`; link.href = dataURL; link.click();
+      });
     </script>
   </body>
 </html>
