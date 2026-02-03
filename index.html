@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Ginza Sakura Sky - White Edition</title>
+    <title>Ginza Sakura Sky - Immersive Edition</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
@@ -31,9 +31,7 @@
     
     <div id="overlay">
       <h2 style="margin-bottom: 10px;">銀座の街に桜を咲かせよう</h2>
-      <p style="margin-bottom: 20px;">
-        地面をタップして桜を植えてください
-      </p>
+      <p style="margin-bottom: 20px;">地面をタップして桜を植えてください</p>
       <button id="start-btn">ARを開始する</button>
     </div>
 
@@ -52,7 +50,7 @@
         <img id="kage-img" src="img/kage.png">
         <a-asset-item id="sakura-tree-model" src="model/sakura.glb"></a-asset-item>
 
-        <a-mixin id="petal" geometry="primitive: plane; width: 0.12; height: 0.12" 
+        <a-mixin id="petal" geometry="primitive: plane; width: 0.1; height: 0.1" 
                   material="src: #sakura-white-img; transparent: true; alphaTest: 0.6; side: double; shader: flat"></a-mixin>
         <a-mixin id="cloud-mixin" material="src: #cloud-img; transparent: true; alphaTest: 0.1; side: double; shader: flat; depthTest: false;"></a-mixin>
       </a-assets>
@@ -63,8 +61,6 @@
       </a-entity>
 
       <a-entity id="ambient-light" light="type: ambient; color: #ffffff; intensity: 1.2"></a-entity>
-      <a-entity id="dir-light" light="type: directional; color: #ffffff; intensity: 0.5" position="-1 2 1"></a-entity>
-
       <a-entity camera look-controls="enabled: true; touchEnabled: false;" far="1000"></a-entity>
     </a-scene>
 
@@ -76,23 +72,18 @@
       const sakuraAnchor = document.querySelector('#sakura-anchor');
       const ambientLight = document.querySelector('#ambient-light');
 
-      const MAX_PETALS = 280; 
+      const MAX_PETALS = 200; 
       let petals = [];
       let treePlaced = false;
       let touchStartX = 0;
       let touchStartY = 0;
-      let petalColor = "#ffffff"; // 初期値は白
+      let petalColor = "#ffffff";
 
       startBtn.addEventListener('click', function() {
         overlay.style.display = 'none';
         shutterWrapper.style.display = 'flex';
-        initAR();
+        updateLightingByTime();
       });
-
-      function initAR() {
-        createClouds();
-        updateLightingByTime(); 
-      }
 
       window.addEventListener('mousedown', (e) => {
         if (overlay.style.display !== 'none' || e.target.closest('#shutter-wrapper')) return;
@@ -100,7 +91,7 @@
         if (!treePlaced) {
           const screenY = e.clientY / window.innerHeight;
           const clampedY = Math.max(0.2, screenY); 
-          const distance = 4 + (1 - clampedY) * 30; // 距離感の微調整
+          const distance = 5 + (1 - clampedY) * 35; 
 
           const camera = document.querySelector('[camera]').object3D;
           const direction = new THREE.Vector3(0, 0, -1);
@@ -115,37 +106,34 @@
           sakuraAnchor.setAttribute('visible', 'true');
           treePlaced = true;
 
-          // 桜の木自体にも白さを強調するマテリアル設定を上書き（モデルによる）
-          document.querySelector('#sakura-tree').setAttribute('material', 'color: #ffffff; mesh-smooth-shading: true');
-
+          // 木が植わったので雲と花びらを開始
+          createClouds(targetX, targetZ);
           for (let i = 0; i < MAX_PETALS; i++) { 
-            setTimeout(() => createPetal(), Math.random() * 8000); 
+            setTimeout(() => createPetal(), Math.random() * 5000); 
           }
         }
-
-        // タップ時の花吹雪（白に近い薄ピンク）
-        for (let i = 0; i < 12; i++) { createBurstPetal(); }
+        for (let i = 0; i < 10; i++) { createBurstPetal(); }
       });
 
+      // --- 修正: 花びらを自分の周辺（前方の扇状の範囲）に降らせる ---
       function createPetal() {
         if (!treePlaced) return;
         const petal = document.createElement('a-entity');
         petal.setAttribute('mixin', 'petal');
         
-        const treePos = sakuraAnchor.getAttribute('position');
-        const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * 7; 
-        const x = parseFloat(treePos.x) + Math.cos(angle) * radius;
-        const z = parseFloat(treePos.z) + Math.sin(angle) * radius;
+        // 自分の位置を基準に、前方に降らせる
+        const angle = (Math.random() - 0.5) * Math.PI; // 前方180度
+        const radius = 1 + Math.random() * 8; // 自分から1m〜9mの範囲
+        const x = Math.sin(angle) * radius;
+        const z = -Math.cos(angle) * radius;
 
-        petal.setAttribute('position', `${x} 12 ${z}`);
-        // 花びらの色を白〜ごく薄いピンクに
-        petal.setAttribute('material', `color: ${petalColor}; opacity: 0.85;`);
+        petal.setAttribute('position', `${x} 8 ${z}`);
+        petal.setAttribute('material', `color: ${petalColor}; opacity: 0.8;`);
         
-        const dur = 9000 + Math.random() * 6000;
+        const dur = 8000 + Math.random() * 4000;
         petal.setAttribute('animation__fall', { 
             property: 'position', 
-            to: `${x + (Math.random()-0.5)*5} -10 ${z + (Math.random()-0.5)*5}`, 
+            to: `${x + (Math.random()-0.5)*3} -5 ${z + (Math.random()-0.5)*3}`, 
             dur: dur, easing: 'linear' 
         });
         petal.setAttribute('animation__rotate', { property: 'rotation', to: `${Math.random()*360} ${Math.random()*720} ${Math.random()*360}`, dur: 5000, loop: true });
@@ -161,21 +149,38 @@
         }, dur);
       }
 
+      // --- 修正: 桜雲を木の周りに出す（カラーバリエーション付き） ---
+      function createClouds(tx, tz) {
+        const pinkColors = ['#FFC0CB', '#FFB6C1', '#FFE4E1', '#FFF0F5'];
+        for (let i = 0; i < 15; i++) {
+          const cloud = document.createElement('a-entity');
+          cloud.setAttribute('mixin', 'cloud-mixin');
+          const angle = Math.random() * Math.PI * 2;
+          const radius = 2 + Math.random() * 6;
+          const x = tx + Math.cos(angle) * radius;
+          const z = tz + Math.sin(angle) * radius;
+          const y = 2 + Math.random() * 4;
+
+          cloud.setAttribute('position', `${x} ${y} ${z}`);
+          const randomColor = pinkColors[Math.floor(Math.random() * pinkColors.length)];
+          cloud.setAttribute('material', `color: ${randomColor}; opacity: 0.35`);
+          const size = 5 + Math.random() * 5;
+          cloud.setAttribute('geometry', `primitive: plane; width: ${size}; height: ${size * 0.6}`);
+          sceneEl.appendChild(cloud);
+        }
+      }
+
       function createBurstPetal() {
         const petal = document.createElement('a-entity');
         petal.setAttribute('mixin', 'petal');
-        const x = (Math.random() - 0.5) * 3;
-        const y = 1.5 + (Math.random() - 0.5) * 1;
-        const z = -2;
+        const x = (Math.random() - 0.5) * 2;
+        const y = 1.2 + (Math.random() - 0.5) * 0.5;
+        const z = -1.5;
         petal.setAttribute('position', `${x} ${y} ${z}`);
-        petal.setAttribute('rotation', `${Math.random()*360} ${Math.random()*360} ${Math.random()*360}`);
-        petal.setAttribute('material', `color: #fffafa; opacity: 0.9;`);
-        
-        const destX = x + (Math.random() - 0.5) * 10;
-        const destZ = z - (Math.random() * 8);
-        petal.setAttribute('animation__burst', { property: 'position', to: `${destX} -5 ${destZ}`, dur: 4500, easing: 'easeOutQuad' });
-        petal.setAttribute('animation__rotate', { property: 'rotation', to: `${Math.random()*720} ${Math.random()*720} ${Math.random()*720}`, dur: 4000, loop: true, easing: 'linear' });
-        
+        petal.setAttribute('material', `color: #ffffff; opacity: 0.9;`);
+        const destX = x + (Math.random() - 0.5) * 8;
+        const destZ = z - (Math.random() * 6);
+        petal.setAttribute('animation__burst', { property: 'position', to: `${destX} -5 ${destZ}`, dur: 4000, easing: 'easeOutQuad' });
         sceneEl.appendChild(petal);
         petals.push(petal);
         setTimeout(() => { if (petal.parentNode) { petal.parentNode.removeChild(petal); petals = petals.filter(p => p !== petal); } }, 5000);
@@ -183,16 +188,12 @@
 
       function updateLightingByTime() {
         const hour = new Date().getHours();
-        // 銀座の街に馴染むよう、極端な色変化を抑えて「白さ」を優先
         if (hour >= 16 && hour < 18) {
           ambientLight.setAttribute('light', 'color: #fffafa; intensity: 1.1'); 
           petalColor = "#ffffff";
         } else if (hour >= 18 || hour < 6) {
           ambientLight.setAttribute('light', 'color: #f0f0ff; intensity: 0.8'); 
           petalColor = "#f8f8ff"; 
-        } else {
-          ambientLight.setAttribute('light', 'color: #ffffff; intensity: 1.2');
-          petalColor = "#ffffff";
         }
       }
 
@@ -208,19 +209,6 @@
         }
       });
 
-      function createClouds() {
-        for (let i = 0; i < 15; i++) {
-          const cloud = document.createElement('a-entity');
-          cloud.setAttribute('mixin', 'cloud-mixin');
-          const angle = Math.random() * Math.PI * 2;
-          const radius = 25 + Math.random() * 20;
-          cloud.setAttribute('position', `${Math.cos(angle) * radius} ${10 + Math.random() * 8} ${Math.sin(angle) * radius}`);
-          cloud.setAttribute('material', `color: #ffffff; opacity: 0.3`); // 雲も白く
-          cloud.setAttribute('geometry', `primitive: plane; width: 18; height: 12`);
-          sceneEl.appendChild(cloud);
-        }
-      }
-
       document.querySelector('#shutter-btn').addEventListener('click', function() {
         const video = document.querySelector('video');
         const aSceneCanvas = sceneEl.components.screenshot.getCanvas('perspective');
@@ -229,17 +217,8 @@
         const ctx = finalCanvas.getContext("2d");
         ctx.drawImage(video, 0, 0, finalCanvas.width, finalCanvas.height);
         ctx.drawImage(aSceneCanvas, 0, 0, finalCanvas.width, finalCanvas.height);
-        
-        const dataURL = finalCanvas.toDataURL('image/png');
-        
-        // フラッシュ演出
-        const flash = document.createElement('div');
-        flash.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:white;z-index:10001;pointer-events:none;';
-        document.body.appendChild(flash);
-        setTimeout(() => { flash.style.transition = 'opacity 0.4s'; flash.style.opacity = '0'; setTimeout(() => document.body.removeChild(flash), 400); }, 50);
-
         const link = document.createElement('a');
-        link.download = `sakura-${Date.now()}.png`; link.href = dataURL; link.click();
+        link.download = `sakura-${Date.now()}.png`; link.href = finalCanvas.toDataURL('image/png'); link.click();
       });
     </script>
   </body>
